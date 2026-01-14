@@ -1,1 +1,0 @@
-# sigma-data-model-gh-manager
