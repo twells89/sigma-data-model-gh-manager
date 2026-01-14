@@ -1,0 +1,4088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sigma Data Model Manager</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --bg-hover: #222230;
+            --border: #2a2a3a;
+            --border-focus: #5865f2;
+            --text-primary: #f0f0f5;
+            --text-secondary: #9090a0;
+            --text-muted: #606070;
+            --accent: #5865f2;
+            --accent-hover: #6875f3;
+            --success: #43b581;
+            --warning: #faa61a;
+            --error: #f04747;
+            --json-key: #79c0ff;
+            --json-string: #a5d6ff;
+            --json-number: #d2a8ff;
+            --json-boolean: #ff7b72;
+            --json-null: #8b949e;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .app-container {
+            display: grid;
+            grid-template-columns: 320px 1fr 300px;
+            min-height: 100vh;
+        }
+        
+        .app-container.history-collapsed {
+            grid-template-columns: 320px 1fr 40px;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        
+        .logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        
+        .logo-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-left: 48px;
+        }
+        
+        /* Credentials Section */
+        .credentials-section {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 14px;
+        }
+        
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            transition: all 0.15s ease;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.15);
+        }
+        
+        input::placeholder {
+            color: var(--text-muted);
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            width: 100%;
+        }
+        
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            filter: brightness(1.1);
+        }
+
+        .btn-github {
+            background: #238636;
+            color: white;
+            border: none;
+        }
+
+        .btn-github:hover {
+            background: #2ea043;
+        }
+
+        .btn-github:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+        }
+        
+        /* Data Models List */
+        .models-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .models-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .models-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        
+        .model-item {
+            padding: 14px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin-bottom: 4px;
+        }
+        
+        .model-item:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .model-item.active {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-focus);
+        }
+        
+        .model-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .model-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 12px;
+        }
+        
+        /* Main Content */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .toolbar-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .editor-tabs {
+            display: flex;
+            gap: 2px;
+            padding: 12px 24px 0;
+            background: var(--bg-secondary);
+        }
+        
+        .editor-tab {
+            padding: 10px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        .editor-tab.active {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-color: var(--border);
+        }
+        
+        .json-editor {
+            flex: 1;
+            padding: 24px;
+            overflow: auto;
+            background: var(--bg-primary);
+        }
+        
+        .json-editor textarea {
+            width: 100%;
+            height: 100%;
+            min-height: calc(100vh - 200px);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            color: var(--text-primary);
+            resize: none;
+            tab-size: 2;
+        }
+        
+        .json-editor textarea:focus {
+            outline: none;
+            border-color: var(--border-focus);
+        }
+        
+        /* Status Messages */
+        .status-bar {
+            padding: 10px 24px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+        
+        .status-indicator.connected {
+            background: var(--success);
+        }
+        
+        .status-indicator.error {
+            background: var(--error);
+        }
+        
+        .status-indicator.loading {
+            background: var(--warning);
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .toast {
+            padding: 14px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            font-size: 13px;
+            animation: slideIn 0.2s ease;
+            max-width: 400px;
+        }
+        
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--error); }
+        .toast.warning { border-left: 3px solid var(--warning); }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            width: 90%;
+            max-width: 600px;
+            max-height: 85vh;
+            overflow-y: auto;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+        
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+        
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+        }
+        
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+        }
+        
+        select.form-input {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239090a0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+        
+        select.form-input:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        select.form-input option {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--border-focus);
+        }
+        
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+        
+        .form-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+        
+        .table-config {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .table-config-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        
+        .table-config-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .table-config-remove {
+            background: none;
+            border: none;
+            color: var(--error);
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .column-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .column-tag {
+            background: var(--bg-hover);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .column-tag-remove {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            padding: 0;
+        }
+        
+        .column-tag-remove:hover {
+            color: var(--error);
+        }
+        
+        .add-column-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .add-column-row input {
+            flex: 1;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .location-type-btn {
+            padding: 10px 16px;
+            font-size: 13px;
+            transition: all 0.15s ease;
+        }
+        
+        .location-type-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        
+        /* Setup Guide Styles */
+        .setup-section {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .setup-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .setup-section h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+        
+        .setup-section p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        
+        .setup-section ol, .setup-section ul {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        
+        .setup-section li {
+            margin-bottom: 4px;
+        }
+        
+        .setup-section code {
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+        }
+        
+        .setup-section a {
+            color: var(--accent);
+        }
+        
+        .setup-warning {
+            background: rgba(250, 166, 26, 0.1);
+            border-left: 3px solid var(--warning);
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 12px !important;
+        }
+        
+        .setup-table {
+            width: 100%;
+            font-size: 13px;
+            margin: 10px 0;
+            border-collapse: collapse;
+        }
+        
+        .setup-table td {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+        }
+        
+        .setup-table td:first-child {
+            width: 180px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            background: var(--bg-tertiary);
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Empty State */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+        
+        .empty-state p {
+            font-size: 14px;
+            max-width: 300px;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Tooltip */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+            margin-right: 16px;
+        }
+
+        .tooltip-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            font-size: 11px;
+            color: var(--text-muted);
+            cursor: help;
+            margin-left: 8px;
+        }
+
+        .tooltip-text {
+            visibility: hidden;
+            position: absolute;
+            z-index: 1000;
+            top: 125%;
+            left: 0;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            width: 280px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            white-space: normal;
+        }
+
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Cloud selector */
+        .cloud-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .cloud-option {
+            flex: 1;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s ease;
+        }
+
+        .cloud-option:hover {
+            background: var(--bg-hover);
+        }
+
+        .cloud-option.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge.beta {
+            background: rgba(250, 166, 26, 0.15);
+            color: var(--warning);
+        }
+        
+        /* History Panel */
+        .history-panel {
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+        
+        .history-panel.collapsed {
+            min-width: 40px;
+            max-width: 40px;
+            cursor: pointer;
+        }
+        
+        .history-panel.collapsed:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .history-panel.collapsed .history-content {
+            display: none;
+        }
+        
+        .history-panel.collapsed .history-header {
+            flex-direction: column;
+            padding: 12px 8px;
+            height: 100%;
+            justify-content: flex-start;
+            gap: 12px;
+        }
+        
+        .history-panel.collapsed .history-header h3 {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+            white-space: nowrap;
+        }
+        
+        .history-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        
+        .history-header h3 {
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .history-toggle {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 14px;
+            border-radius: 4px;
+        }
+        
+        .history-toggle:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        .history-content {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        
+        .commit-item {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: var(--bg-tertiary);
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1px solid transparent;
+        }
+        
+        .commit-item:hover {
+            border-color: var(--border);
+        }
+        
+        .commit-item.current {
+            border-color: var(--success);
+            background: rgba(67, 181, 129, 0.1);
+        }
+        
+        .commit-sha {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        
+        .commit-message {
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .commit-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .commit-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        
+        .commit-actions .btn {
+            padding: 4px 10px;
+            font-size: 11px;
+        }
+        
+        /* Diff Modal */
+        .diff-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+        }
+        
+        .diff-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .diff-modal {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            width: 95%;
+            max-width: 1200px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .diff-modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .diff-modal-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .diff-modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+        }
+        
+        .diff-modal-close:hover {
+            color: var(--text-primary);
+        }
+        
+        .diff-info {
+            padding: 12px 20px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .diff-commits {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .diff-sha {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            padding: 4px 10px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            color: var(--accent);
+        }
+        
+        .diff-arrow {
+            color: var(--text-muted);
+        }
+        
+        .diff-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .diff-stat-add {
+            color: #3fb950;
+        }
+        
+        .diff-stat-remove {
+            color: #f85149;
+        }
+        
+        .diff-body {
+            flex: 1;
+            overflow: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .diff-pane {
+            overflow: auto;
+            border-right: 1px solid var(--border);
+        }
+        
+        .diff-pane:last-child {
+            border-right: none;
+        }
+        
+        .diff-pane-header {
+            padding: 10px 16px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        
+        .diff-pane-header.old {
+            background: rgba(248, 81, 73, 0.1);
+            color: #f85149;
+        }
+        
+        .diff-pane-header.new {
+            background: rgba(46, 160, 67, 0.1);
+            color: #3fb950;
+        }
+        
+        .diff-content {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        
+        .diff-line {
+            display: flex;
+            min-height: 20px;
+            padding: 0 12px;
+        }
+        
+        .diff-line-number {
+            width: 45px;
+            color: var(--text-muted);
+            text-align: right;
+            padding-right: 12px;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        
+        .diff-line-content {
+            flex: 1;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        
+        .diff-line.added {
+            background: rgba(46, 160, 67, 0.15);
+        }
+        
+        .diff-line.removed {
+            background: rgba(248, 81, 73, 0.15);
+        }
+        
+        .diff-modal-footer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        /* Branch Management Styles */
+        .branch-selector {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        
+        .branch-selector:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent);
+        }
+        
+        .branch-icon {
+            font-size: 14px;
+        }
+        
+        .current-branch {
+            font-weight: 600;
+            color: var(--accent);
+        }
+        
+        .commit-mode-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .commit-mode-tab {
+            flex: 1;
+            padding: 10px 16px;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .commit-mode-tab:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+        
+        .commit-mode-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        
+        .branch-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 8px;
+        }
+        
+        .branch-item {
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .branch-item:last-child {
+            border-bottom: none;
+        }
+        
+        .branch-item:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .branch-item.current {
+            background: rgba(88, 101, 242, 0.1);
+        }
+        
+        .branch-item-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .branch-item-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: var(--accent);
+            color: white;
+            border-radius: 4px;
+        }
+        
+        .pr-fields {
+            display: none;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .pr-fields.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">Σ</div>
+                    <span class="logo-text">Data Model Manager</span>
+                </div>
+                <div class="logo-subtitle">Code-based Data Models <span class="badge beta">Beta</span></div>
+            </div>
+            
+            <div class="credentials-section">
+                <div class="section-title">API Credentials</div>
+                
+                <div class="form-group">
+                    <label>Sigma Cloud</label>
+                    <div class="cloud-selector">
+                        <div class="cloud-option active" data-cloud="aws" onclick="selectCloud('aws')">AWS</div>
+                        <div class="cloud-option" data-cloud="azure" onclick="selectCloud('azure')">Azure</div>
+                        <div class="cloud-option" data-cloud="gcp" onclick="selectCloud('gcp')">GCP</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="clientId">Client ID</label>
+                    <input type="text" id="clientId" placeholder="Enter your Client ID">
+                </div>
+                
+                <div class="form-group">
+                    <label for="clientSecret">Client Secret</label>
+                    <input type="password" id="clientSecret" placeholder="Enter your Client Secret">
+                </div>
+                
+                <button class="btn btn-primary" id="connectBtn" onclick="connect()">
+                    <span>Connect to Sigma</span>
+                </button>
+            </div>
+            
+            <div class="credentials-section" style="border-bottom: 1px solid var(--border);">
+                <div class="section-title">GitHub Integration</div>
+                
+                <div class="form-group">
+                    <label for="ghToken">Personal Access Token</label>
+                    <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxx">
+                </div>
+                
+                <div class="form-group">
+                    <label for="ghRepo">Repository</label>
+                    <input type="text" id="ghRepo" placeholder="owner/repo-name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="ghBranch">Branch</label>
+                    <input type="text" id="ghBranch" placeholder="main" value="main">
+                </div>
+                
+                <div class="form-group">
+                    <label for="ghPath">Data Models Path</label>
+                    <input type="text" id="ghPath" placeholder="data-models/" value="data-models/">
+                </div>
+                
+                <button class="btn btn-secondary" id="ghConnectBtn" onclick="connectGitHub()" style="width: 100%;">
+                    <span>Connect to GitHub</span>
+                </button>
+                
+                <button class="btn btn-secondary" id="ghExportAllBtn" onclick="exportAllToGitHub()" style="width: 100%; margin-top: 10px;" disabled>
+                    <span>Initial Export to GitHub</span>
+                </button>
+                
+                <div style="margin-top: 16px; text-align: center; display: flex; justify-content: center; gap: 16px;">
+                    <button onclick="showSetupGuide()" style="background: none; border: none; color: var(--accent); font-size: 11px; cursor: pointer; text-decoration: underline;">
+                        📖 Setup Guide
+                    </button>
+                    <button onclick="clearCredentials()" style="background: none; border: none; color: var(--text-muted); font-size: 11px; cursor: pointer; text-decoration: underline;">
+                        Clear saved credentials
+                    </button>
+                </div>
+            </div>
+            
+            <div class="models-section">
+                <div class="models-header">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="section-title" style="margin: 0;">Data Models</span>
+                        <span id="modelsCount" style="font-size: 11px; color: var(--text-muted);"></span>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary" onclick="newDataModel()" style="padding: 6px 12px; font-size: 12px;" id="newModelBtn" disabled>
+                            + New
+                        </button>
+                        <button class="btn btn-secondary" onclick="refreshModels()" style="padding: 6px 12px; font-size: 12px;" id="refreshBtn" disabled>
+                            ↻ Refresh
+                        </button>
+                    </div>
+                </div>
+                <div style="padding: 8px 12px; border-bottom: 1px solid var(--border);">
+                    <input type="text" 
+                           id="modelsSearch" 
+                           placeholder="Search models..." 
+                           oninput="filterModels(this.value)"
+                           style="width: 100%; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px;">
+                </div>
+                <div class="models-list" id="modelsList">
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <div class="empty-state-icon">📊</div>
+                        <p>Connect to Sigma to view your data models</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="toolbar">
+                <div style="display: flex; align-items: center;">
+                    <div class="toolbar-title" id="editorTitle">No Data Model Selected</div>
+                    <div class="tooltip-container">
+                        <span class="tooltip-icon">?</span>
+                        <div class="tooltip-text">
+                            <strong>Workflow:</strong><br>
+                            1. Select a data model<br>
+                            2. Edit the JSON<br>
+                            3. Commit (direct or PR)<br>
+                            4. Changes sync to Sigma<br><br>
+                            <strong>⚠️ Sigma = Source of Truth</strong><br>
+                            Use "Pull from Sigma" to sync changes made in Sigma UI<br><br>
+                            <strong>⌨️ Shortcuts:</strong> Ctrl+S (commit), Ctrl+B (branches)
+                        </div>
+                    </div>
+                </div>
+                <div class="toolbar-actions">
+                    <div class="branch-selector" onclick="openBranchModal()" id="branchSelector" title="Branch Management: Create feature branches or switch between branches" style="display: none;">
+                        <span class="branch-icon">🌿</span>
+                        <span class="current-branch" id="currentBranchDisplay">main</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="refreshFromSigma()" id="sigmaRefreshBtn" disabled title="Pull latest from Sigma (use after making changes in Sigma UI)">
+                        ↻ Pull from Sigma
+                    </button>
+                    <button class="btn btn-secondary" onclick="formatJson()" id="formatBtn" disabled>
+                        Format
+                    </button>
+                    <button class="btn btn-secondary" onclick="copyJson()" id="copyBtn" disabled>
+                        Copy
+                    </button>
+                    <button class="btn btn-success" onclick="commitChanges()" id="commitBtn" disabled>
+                        Commit Changes
+                    </button>
+                    <button class="btn btn-github" onclick="createPRToMain()" id="openPRBtn" disabled style="display: none;">
+                        🔀 Open PR to Main
+                    </button>
+                </div>
+            </div>
+            
+            <div class="editor-container">
+                <div class="editor-tabs">
+                    <div class="editor-tab active">JSON Representation</div>
+                </div>
+                <div class="json-editor">
+                    <textarea id="jsonEditor" placeholder="Select a data model from the sidebar to edit...
+
+WORKFLOW:
+1. Connect to Sigma & GitHub
+2. Select a data model
+3. Edit the JSON
+4. Commit changes (direct or via PR)
+5. Changes sync to Sigma automatically
+
+TIPS:
+• Use 'Pull from Sigma' to sync changes made in Sigma UI
+• Switch branches with the 🌿 selector or Ctrl+B
+• View history and restore previous versions in the History panel
+• Sigma is always the source of truth"></textarea>
+                </div>
+            </div>
+            
+            <div class="status-bar">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Not connected</span>
+            </div>
+        </main>
+        
+        <!-- History Panel -->
+        <aside class="history-panel" id="historyPanel" onclick="expandHistoryIfCollapsed(event)">
+            <div class="history-header">
+                <h3>📜 History</h3>
+                <button class="history-toggle" onclick="toggleHistoryPanel()" title="Toggle history panel">◀</button>
+            </div>
+            <div class="history-content">
+                <div class="history-list" id="historyList">
+                    <div class="empty-state" style="padding: 30px 16px; text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 12px;">📋</div>
+                        <p style="color: var(--text-muted); font-size: 12px;">Select a model to view its GitHub commit history</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+    
+    <!-- Diff Modal -->
+    <div class="diff-modal-overlay" id="diffModal">
+        <div class="diff-modal">
+            <div class="diff-modal-header">
+                <div class="diff-modal-title">Compare Versions</div>
+                <button class="diff-modal-close" onclick="closeDiffModal()">&times;</button>
+            </div>
+            <div class="diff-info">
+                <div class="diff-commits">
+                    <span class="diff-sha" id="diffOldSha">abc1234</span>
+                    <span class="diff-arrow">→</span>
+                    <span class="diff-sha" id="diffNewSha">Current</span>
+                </div>
+                <div class="diff-stats">
+                    <span class="diff-stat-add" id="diffAdditions">+0</span>
+                    <span class="diff-stat-remove" id="diffDeletions">-0</span>
+                </div>
+            </div>
+            <div class="diff-body">
+                <div class="diff-pane">
+                    <div class="diff-pane-header old">Previous Version</div>
+                    <div class="diff-content" id="diffOldContent"></div>
+                </div>
+                <div class="diff-pane">
+                    <div class="diff-pane-header new">Current Version</div>
+                    <div class="diff-content" id="diffNewContent"></div>
+                </div>
+            </div>
+            <div class="diff-modal-footer">
+                <button class="btn btn-secondary" onclick="closeDiffModal()">Close</button>
+                <button class="btn btn-primary" onclick="restoreVersion()" id="restoreBtn">Restore This Version</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Branch Management Modal -->
+    <div class="modal-overlay" id="branchModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">🌿 Branch Management</div>
+                <button class="modal-close" onclick="closeBranchModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Current Branch</label>
+                    <div style="padding: 12px; background: var(--bg-tertiary); border-radius: 8px; font-weight: 600; color: var(--accent);">
+                        🌿 <span id="modalCurrentBranchDisplay">main</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Switch Branch</label>
+                    <div class="branch-list" id="branchList">
+                        <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+                            Loading branches...
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+                    <label class="form-label">Create New Branch</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" class="form-input" id="newBranchName" placeholder="feature/my-changes" style="flex: 1; min-width: 0;">
+                        <button class="btn btn-primary" onclick="createBranch()" style="width: auto; flex-shrink: 0;">Create</button>
+                    </div>
+                    <small style="color: var(--text-muted); margin-top: 6px; display: block;">
+                        New branch will be created from current branch
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeBranchModal()">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Commit Modal -->
+    <div class="modal-overlay" id="commitModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">💾 Commit Changes</div>
+                <button class="modal-close" onclick="closeCommitModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="commit-mode-tabs">
+                    <button class="commit-mode-tab active" onclick="setCommitMode('direct')" id="directModeTab">
+                        ⚡ Direct Commit
+                    </button>
+                    <button class="commit-mode-tab" onclick="setCommitMode('pr')" id="prModeTab">
+                        🔀 Pull Request
+                    </button>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Commit to Branch</label>
+                    <div style="padding: 10px 12px; background: var(--bg-tertiary); border-radius: 8px; font-size: 13px;">
+                        🌿 <span id="commitBranchDisplay">main</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Commit Message *</label>
+                    <input type="text" class="form-input" id="commitMessage" placeholder="Update data model">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description (optional)</label>
+                    <textarea class="form-input" id="commitDescription" rows="3" placeholder="Additional details about this change..."></textarea>
+                </div>
+                
+                <div class="pr-fields" id="prFields">
+                    <div class="form-group">
+                        <label class="form-label">PR Title</label>
+                        <input type="text" class="form-input" id="prTitle" placeholder="Leave blank to use commit message">
+                    </div>
+                    <small style="color: var(--text-muted);">
+                        A new branch will be created and a PR opened against <strong id="prBaseBranch">main</strong>
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCommitModal()">Cancel</button>
+                <button class="btn btn-success" onclick="executeCommit()" id="executeCommitBtn">Commit</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <!-- New Data Model Modal -->
+    <div class="modal-overlay" id="newModelModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Create New Data Model</div>
+                <button class="modal-close" onclick="closeNewModelModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Data Model Name *</label>
+                    <input type="text" class="form-input" id="newModelName" placeholder="e.g., Sales Analytics">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-input" id="newModelDescription" placeholder="Optional description">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Location *</label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                        <button type="button" class="btn btn-secondary location-type-btn active" id="locTypeWorkspace" onclick="selectLocationType('workspace')" style="flex: 1;">
+                            Workspace
+                        </button>
+                        <button type="button" class="btn btn-secondary location-type-btn" id="locTypePersonal" onclick="selectLocationType('personal')" style="flex: 1;">
+                            My Documents
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="form-group" id="workspaceGroup">
+                    <label class="form-label">Workspace *</label>
+                    <select class="form-input" id="newModelWorkspaceId" disabled>
+                        <option value="">Connect to Sigma first...</option>
+                    </select>
+                    <div class="form-hint">Select the workspace containing your target folder</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Folder *</label>
+                    <select class="form-input" id="newModelFolderId" disabled>
+                        <option value="">Select a workspace first...</option>
+                    </select>
+                    <div class="form-hint">Select the folder where the data model will be created</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Connection *</label>
+                    <select class="form-input" id="newModelConnectionId" disabled>
+                        <option value="">Loading connections...</option>
+                    </select>
+                    <div class="form-hint">Select the data warehouse connection for your tables</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Tables</span>
+                        <button class="btn btn-secondary btn-small" onclick="addTableConfig()">+ Add Table</button>
+                    </label>
+                    <div id="tablesContainer"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeNewModelModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="createDataModelFromWizard()">Create Data Model</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Setup Guide Modal -->
+    <div class="modal-overlay" id="setupGuideModal">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <div class="modal-title">📖 Setup Guide</div>
+                <button class="modal-close" onclick="closeSetupGuide()">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <div class="setup-section">
+                    <h3>Overview</h3>
+                    <p>This tool lets you manage Sigma data models as code using GitHub for version control. <strong>Sigma is always the source of truth</strong> - this tool helps you track changes, review via PRs, and maintain history.</p>
+                    <p>When changes are merged to your main branch, they automatically sync to Sigma via GitHub Actions.</p>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>Step 1: Get Sigma API Credentials</h3>
+                    <ol>
+                        <li>Log in to Sigma Computing</li>
+                        <li>Go to <strong>Administration</strong> → <strong>Developer Access</strong></li>
+                        <li>Click <strong>Create New</strong> under Client Credentials</li>
+                        <li>Copy the <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+                    </ol>
+                    <p class="setup-warning">⚠️ Save the Client Secret immediately - you cannot view it again!</p>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>Step 2: Set Up GitHub Repository</h3>
+                    <ol>
+                        <li>Create a new private GitHub repository</li>
+                        <li><strong><a href="https://github.com/twells89/sigma-data-model-tool/tree/main/repo-template" target="_blank">Download the repo template files</a></strong> and copy them to your repository</li>
+                        <li>Your repo structure should look like:
+                            <ul>
+                                <li><code>.github/workflows/</code> - automation workflows</li>
+                                <li><code>scripts/</code> - Python sync scripts</li>
+                                <li><code>data-models/</code> - your JSON files</li>
+                                <li><code>config.yml</code> - configuration</li>
+                            </ul>
+                        </li>
+                        <li>Commit and push these files to your repo</li>
+                    </ol>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>Step 3: Configure GitHub Secrets & Variables</h3>
+                    <p>Go to your repo: <strong>Settings</strong> → <strong>Secrets and variables</strong> → <strong>Actions</strong></p>
+                    
+                    <p><strong>Add Secrets:</strong></p>
+                    <table class="setup-table">
+                        <tr><td><code>SIGMA_CLIENT_ID</code></td><td>Your Sigma API Client ID</td></tr>
+                        <tr><td><code>SIGMA_SECRET</code></td><td>Your Sigma API Client Secret</td></tr>
+                    </table>
+                    
+                    <p><strong>Add Variables</strong> (click Variables tab):</p>
+                    <table class="setup-table">
+                        <tr><td><code>SIGMA_CLOUD</code></td><td><code>aws</code>, <code>azure</code>, or <code>gcp</code></td></tr>
+                        <tr><td><code>SIGMA_FOLDER_ID</code></td><td>Folder ID for new data models</td></tr>
+                    </table>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>Step 4: Enable Workflow Permissions</h3>
+                    <ol>
+                        <li>Go to <strong>Settings</strong> → <strong>Actions</strong> → <strong>General</strong></li>
+                        <li>Under Workflow permissions, select <strong>"Read and write permissions"</strong></li>
+                        <li>Check <strong>"Allow GitHub Actions to create and approve pull requests"</strong></li>
+                        <li>Click <strong>Save</strong></li>
+                    </ol>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>Step 5: Create GitHub Personal Access Token</h3>
+                    <ol>
+                        <li>Go to <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a></li>
+                        <li>Click <strong>Generate new token (classic)</strong></li>
+                        <li>Select only the <code>repo</code> scope</li>
+                        <li>Click <strong>Generate token</strong></li>
+                        <li>Copy the token (starts with <code>ghp_</code>)</li>
+                    </ol>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>Step 6: Find Your Sigma Folder ID</h3>
+                    <ol>
+                        <li>In Sigma, navigate to the folder where you want data models created</li>
+                        <li>Look at the URL: <code>...sigmacomputing.com/.../folder/<strong>abc123xyz</strong></code></li>
+                        <li>The folder ID is the last part of the URL</li>
+                    </ol>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>Using This Tool</h3>
+                    <ol>
+                        <li>Enter your Sigma credentials above and click <strong>Connect to Sigma</strong></li>
+                        <li>Enter your GitHub token and repo (format: <code>owner/repo-name</code>)</li>
+                        <li>Click <strong>Connect to GitHub</strong></li>
+                        <li>Select a data model to edit, or click <strong>+ New</strong> to create one</li>
+                        <li>Make changes and click <strong>Commit Changes</strong></li>
+                    </ol>
+                    <p><strong>Commit Workflow:</strong></p>
+                    <ul>
+                        <li><strong>On main branch:</strong> Commit automatically creates a new feature branch + PR to main for review</li>
+                        <li><strong>On feature branch:</strong> Commit pushes directly to that branch. When ready, click <strong>"Open PR to Main"</strong> button</li>
+                    </ul>
+                    <p>This ensures <strong>all changes to main go through PR review</strong> before automatically syncing to Sigma! ✅</p>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>🌿 Branch Management & Workflow</h3>
+                    <p>Click the branch selector in the toolbar (or press <code>Ctrl/Cmd + B</code>) to:</p>
+                    <ul>
+                        <li><strong>Switch branches</strong> - View and edit models on different branches</li>
+                        <li><strong>Create feature branches</strong> - Create isolated branches for your changes</li>
+                    </ul>
+                    <p><strong>How commits work:</strong></p>
+                    <ul>
+                        <li><strong>On main:</strong> Can't commit directly. Commits automatically create a new branch + PR for review</li>
+                        <li><strong>On feature branch:</strong> Commits push directly. Use "Open PR to Main" button when ready to merge</li>
+                    </ul>
+                    <p>This workflow ensures main is always protected and changes sync to Sigma only after PR approval.</p>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>📜 Commit History & Restore</h3>
+                    <p>The <strong>History panel</strong> on the right shows all commits for the selected model:</p>
+                    <ul>
+                        <li><strong>View Diff</strong> - Compare any previous version to the current version side-by-side</li>
+                        <li><strong>Restore</strong> - Load a previous version into the editor, then commit to save it</li>
+                    </ul>
+                    <p>Use this to review changes over time or roll back to a previous version.</p>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>⚠️ Sigma is the Source of Truth</h3>
+                    <p>This tool helps you version control and review changes, but <strong>Sigma is always the source of truth</strong> for your data models.</p>
+                    <ul>
+                        <li>Changes made directly in Sigma's UI are <strong>not automatically synced</strong> to GitHub</li>
+                        <li>Use <strong>↻ Pull from Sigma</strong> to fetch the latest version from Sigma into this tool</li>
+                        <li>Then commit those changes to keep GitHub in sync</li>
+                    </ul>
+                    <p class="setup-warning">💡 Best practice: Use "Pull from Sigma" regularly to ensure GitHub matches what's in Sigma.</p>
+                </div>
+                
+                <div class="setup-section">
+                    <h3>⌨️ Keyboard Shortcuts</h3>
+                    <table class="setup-table">
+                        <tr><td><code>Ctrl/Cmd + S</code></td><td>Open commit modal</td></tr>
+                        <tr><td><code>Ctrl/Cmd + B</code></td><td>Open branch management</td></tr>
+                        <tr><td><code>Esc</code></td><td>Close any modal</td></tr>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeSetupGuide()">Got it!</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // State
+        let state = {
+            cloud: 'aws',
+            baseUrl: 'https://aws-api.sigmacomputing.com',
+            accessToken: null,
+            tokenExpiry: null,
+            dataModels: [],
+            filteredModels: [],
+            selectedModel: null,
+            selectedModelMeta: null, // Stores the list metadata (includes inodeId)
+            originalJson: null,
+            githubSha: null, // SHA of the file in GitHub (for updates)
+            isNewModel: false, // True when creating a new data model
+            commitMode: 'direct', // 'direct' or 'pr'
+            // GitHub
+            github: {
+                token: null,
+                repo: null,
+                branch: 'main',
+                path: 'data-models/',
+                connected: false,
+                branches: [],
+                currentBranch: 'main'
+            }
+        };
+        
+        // LocalStorage keys
+        const STORAGE_KEYS = {
+            sigma: 'sigma_dm_sigma_creds',
+            github: 'sigma_dm_github_creds'
+        };
+        
+        // Save credentials to localStorage
+        function saveCredentials() {
+            const sigmaData = {
+                clientId: document.getElementById('clientId').value,
+                clientSecret: document.getElementById('clientSecret').value,
+                cloud: state.cloud
+            };
+            
+            const githubData = {
+                token: document.getElementById('ghToken').value,
+                repo: document.getElementById('ghRepo').value,
+                branch: document.getElementById('ghBranch').value,
+                path: document.getElementById('ghPath').value
+            };
+            
+            localStorage.setItem(STORAGE_KEYS.sigma, JSON.stringify(sigmaData));
+            localStorage.setItem(STORAGE_KEYS.github, JSON.stringify(githubData));
+        }
+        
+        // Load credentials from localStorage
+        function loadCredentials() {
+            try {
+                const sigmaData = JSON.parse(localStorage.getItem(STORAGE_KEYS.sigma));
+                if (sigmaData) {
+                    document.getElementById('clientId').value = sigmaData.clientId || '';
+                    document.getElementById('clientSecret').value = sigmaData.clientSecret || '';
+                    if (sigmaData.cloud) {
+                        selectCloud(sigmaData.cloud);
+                    }
+                }
+                
+                const githubData = JSON.parse(localStorage.getItem(STORAGE_KEYS.github));
+                if (githubData) {
+                    document.getElementById('ghToken').value = githubData.token || '';
+                    document.getElementById('ghRepo').value = githubData.repo || '';
+                    document.getElementById('ghBranch').value = githubData.branch || 'main';
+                    document.getElementById('ghPath').value = githubData.path || 'data-models/';
+                }
+                
+                return { sigmaData, githubData };
+            } catch (e) {
+                console.error('Error loading credentials:', e);
+                return { sigmaData: null, githubData: null };
+            }
+        }
+        
+        // Clear saved credentials
+        function clearCredentials() {
+            localStorage.removeItem(STORAGE_KEYS.sigma);
+            localStorage.removeItem(STORAGE_KEYS.github);
+            document.getElementById('clientId').value = '';
+            document.getElementById('clientSecret').value = '';
+            document.getElementById('ghToken').value = '';
+            document.getElementById('ghRepo').value = '';
+            document.getElementById('ghBranch').value = 'main';
+            document.getElementById('ghPath').value = 'data-models/';
+            showToast('Saved credentials cleared', 'success');
+        }
+        
+        // Auto-connect on page load
+        async function autoConnect() {
+            const { sigmaData, githubData } = loadCredentials();
+            
+            if (sigmaData?.clientId && sigmaData?.clientSecret) {
+                showToast('Connecting to Sigma...', 'success');
+                await connect();
+            }
+            
+            if (githubData?.token && githubData?.repo) {
+                showToast('Connecting to GitHub...', 'success');
+                await connectGitHub();
+            }
+        }
+        
+        // Cloud URLs
+        const cloudUrls = {
+            aws: 'https://aws-api.sigmacomputing.com',
+            azure: 'https://api.us.azure.sigmacomputing.com',
+            gcp: 'https://api.sigmacomputing.com'
+        };
+        
+        // Select cloud
+        function selectCloud(cloud) {
+            state.cloud = cloud;
+            state.baseUrl = cloudUrls[cloud];
+            
+            document.querySelectorAll('.cloud-option').forEach(el => {
+                el.classList.toggle('active', el.dataset.cloud === cloud);
+            });
+        }
+        
+        // Connect to GitHub
+        async function connectGitHub() {
+            const token = document.getElementById('ghToken').value.trim();
+            const repo = document.getElementById('ghRepo').value.trim();
+            const branch = document.getElementById('ghBranch').value.trim() || 'main';
+            const path = document.getElementById('ghPath').value.trim() || 'data-models/';
+            
+            if (!token || !repo) {
+                showToast('Please enter GitHub token and repository', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('ghConnectBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div><span>Connecting...</span>';
+            
+            try {
+                // Test the connection by fetching repo info
+                const response = await fetch(`https://api.github.com/repos/${repo}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to connect to repository');
+                }
+                
+                const repoData = await response.json();
+                
+                state.github = {
+                    token,
+                    repo,
+                    branch,
+                    path: path.endsWith('/') ? path : path + '/',
+                    connected: true,
+                    branches: [],
+                    currentBranch: branch
+                };
+                
+                showToast(`Connected to ${repoData.full_name}`, 'success');
+                btn.innerHTML = '<span>✓ Connected</span>';
+                btn.style.borderColor = 'var(--success)';
+                btn.style.color = 'var(--success)';
+                
+                // Save credentials
+                saveCredentials();
+                
+                // Show branch selector and update display
+                document.getElementById('branchSelector').style.display = 'inline-flex';
+                document.getElementById('currentBranchDisplay').textContent = branch;
+                
+                // Load branches in background
+                loadBranches();
+                
+                // Enable Export All and New Model if Sigma is also connected
+                if (state.accessToken) {
+                    document.getElementById('ghExportAllBtn').disabled = false;
+                    document.getElementById('newModelBtn').disabled = false;
+                }
+                
+                // Enable commit button if a model is selected
+                if (state.selectedModel) {
+                    document.getElementById('commitBtn').disabled = false;
+                    
+                    // Load commit history for the selected model
+                    loadCommitHistory();
+                    
+                    // Update PR button visibility based on current branch
+                    updatePRButtonVisibility();
+                }
+                
+            } catch (error) {
+                console.error('GitHub connection error:', error);
+                showToast(`GitHub error: ${error.message}`, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<span>Connect to GitHub</span>';
+            }
+        }
+        
+        // Get filename for a data model
+        function getModelFileName(model) {
+            // Use a sanitized name or the dataModelId
+            const name = model.name || model.dataModelId;
+            return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.json';
+        }
+        
+        // Load data model from GitHub
+        async function loadFromGitHub(sigmaSpec) {
+            const fileName = getModelFileName(sigmaSpec);
+            const filePath = state.github.path + fileName;
+            
+            try {
+                const response = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/contents/${filePath}?ref=${state.github.branch}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const content = decodeURIComponent(escape(atob(data.content)));
+                    const jsonData = JSON.parse(content);
+                    
+                    // Use GitHub version
+                    document.getElementById('jsonEditor').value = JSON.stringify(jsonData, null, 2);
+                    state.originalJson = JSON.stringify(jsonData, null, 2);
+                    state.githubSha = data.sha;
+                    
+                    showToast('Loaded from GitHub', 'success');
+                    updateStatus('connected', `Loaded: ${fileName}`);
+                } else if (response.status === 404) {
+                    // File doesn't exist in GitHub yet - use Sigma spec
+                    showToast('New model - not yet in GitHub', 'warning');
+                    state.githubSha = null;
+                }
+                
+            } catch (error) {
+                console.error('GitHub load error:', error);
+                // Fall back to Sigma spec (already loaded)
+            }
+        }
+        
+        // Refresh from Sigma (pull latest changes from UI edits)
+        async function refreshFromSigma() {
+            if (!state.accessToken || !state.selectedModelMeta) {
+                showToast('No data model selected or not connected to Sigma', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('sigmaRefreshBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div>';
+            
+            try {
+                const dataModelId = state.selectedModelMeta.dataModelId;
+                
+                // Fetch latest spec from Sigma
+                const response = await fetch(`${state.baseUrl}/v3alpha/datamodels/${dataModelId}/spec`, {
+                    headers: {
+                        'Authorization': `Bearer ${state.accessToken}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch from Sigma');
+                }
+                
+                const spec = await response.json();
+                
+                // Update editor with Sigma's version
+                state.selectedModel = spec;
+                document.getElementById('jsonEditor').value = JSON.stringify(spec, null, 2);
+                
+                // Update status to show we have unsaved changes (since this is newer than GitHub)
+                const sigmaVersion = spec.documentVersion || 0;
+                updateStatus('connected', `Loaded from Sigma (v${sigmaVersion}) - Commit to sync to GitHub`);
+                showToast('Loaded latest from Sigma. Commit to save to GitHub.', 'success');
+                
+            } catch (error) {
+                console.error('Failed to refresh from Sigma:', error);
+                showToast(`Failed to refresh from Sigma: ${error.message}`, 'error');
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = '↻ Pull from Sigma';
+        }
+        
+        // Commit changes - creates a branch and PR
+        // ==================== BRANCH MANAGEMENT ====================
+        
+        // Open branch modal
+        function openBranchModal() {
+            if (!state.github.connected) {
+                showToast('Connect to GitHub first', 'error');
+                return;
+            }
+            
+            document.getElementById('branchModal').classList.add('active');
+            document.getElementById('modalCurrentBranchDisplay').textContent = state.github.currentBranch;
+            loadBranches();
+        }
+        
+        // Close branch modal
+        function closeBranchModal() {
+            document.getElementById('branchModal').classList.remove('active');
+        }
+        
+        // Load branches from GitHub
+        async function loadBranches() {
+            const branchList = document.getElementById('branchList');
+            branchList.innerHTML = '<div style="padding: 20px; text-align: center;"><div class="spinner"></div></div>';
+            
+            try {
+                const response = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/branches?per_page=100`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (!response.ok) throw new Error('Failed to fetch branches');
+                
+                const branches = await response.json();
+                state.github.branches = branches.map(b => b.name);
+                
+                renderBranchList(branches);
+                
+            } catch (error) {
+                console.error('Error loading branches:', error);
+                branchList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--error);">Failed to load branches</div>';
+            }
+        }
+        
+        // Render branch list
+        function renderBranchList(branches) {
+            const branchList = document.getElementById('branchList');
+            
+            if (branches.length === 0) {
+                branchList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">No branches found</div>';
+                return;
+            }
+            
+            branchList.innerHTML = branches.map(branch => {
+                const isCurrent = branch.name === state.github.currentBranch;
+                return `
+                    <div class="branch-item ${isCurrent ? 'current' : ''}" onclick="switchBranch('${branch.name}')">
+                        <div class="branch-item-name">
+                            <span>🌿 ${branch.name}</span>
+                            ${isCurrent ? '<span class="branch-item-badge">current</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Switch to a different branch
+        async function switchBranch(branchName) {
+            if (branchName === state.github.currentBranch) {
+                showToast('Already on this branch', 'info');
+                return;
+            }
+            
+            state.github.currentBranch = branchName;
+            state.github.branch = branchName;
+            
+            // Update all displays
+            document.getElementById('currentBranchDisplay').textContent = branchName;
+            document.getElementById('modalCurrentBranchDisplay').textContent = branchName;
+            document.getElementById('ghBranch').value = branchName; // Update sidebar input
+            
+            // Re-render branch list to update current indicator
+            const branches = state.github.branches.map(name => ({ name }));
+            renderBranchList(branches);
+            
+            // Reload current model from new branch if one is selected
+            if (state.selectedModelMeta) {
+                await loadFromGitHub(state.selectedModel);
+                loadCommitHistory();
+            }
+            
+            // Update PR button visibility based on new branch
+            updatePRButtonVisibility();
+            
+            showToast(`Switched to branch: ${branchName}`, 'success');
+        }
+        
+        // Create a new branch
+        async function createBranch() {
+            const branchName = document.getElementById('newBranchName').value.trim();
+            
+            if (!branchName) {
+                showToast('Please enter a branch name', 'error');
+                return;
+            }
+            
+            // Validate branch name
+            if (!/^[a-zA-Z0-9._/-]+$/.test(branchName)) {
+                showToast('Invalid branch name. Use letters, numbers, dots, dashes, and slashes.', 'error');
+                return;
+            }
+            
+            try {
+                // Get current branch SHA
+                const refResponse = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/git/ref/heads/${state.github.currentBranch}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (!refResponse.ok) throw new Error('Failed to get current branch');
+                const refData = await refResponse.json();
+                
+                // Create new branch
+                const createResponse = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/git/refs`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            ref: `refs/heads/${branchName}`,
+                            sha: refData.object.sha
+                        })
+                    }
+                );
+                
+                if (!createResponse.ok) {
+                    const error = await createResponse.json();
+                    throw new Error(error.message || 'Failed to create branch');
+                }
+                
+                showToast(`Branch "${branchName}" created!`, 'success');
+                document.getElementById('newBranchName').value = '';
+                
+                // Switch to new branch
+                await switchBranch(branchName);
+                
+                // Reload branch list
+                await loadBranches();
+                
+            } catch (error) {
+                console.error('Error creating branch:', error);
+                showToast(`Failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // ==================== COMMIT MODAL ====================
+        
+        // Open commit modal
+        function openCommitModal() {
+            if (!state.github.connected) {
+                showToast('Please connect to GitHub first', 'error');
+                return;
+            }
+            
+            if (!state.selectedModel) {
+                showToast('No data model selected', 'error');
+                return;
+            }
+            
+            // Validate JSON
+            const editor = document.getElementById('jsonEditor');
+            try {
+                JSON.parse(editor.value);
+            } catch (error) {
+                showToast('Invalid JSON - please fix before committing', 'error');
+                return;
+            }
+            
+            // Set default commit message
+            const modelName = state.selectedModel?.name || 'data model';
+            const isNew = state.isNewModel;
+            document.getElementById('commitMessage').value = isNew ? `Create ${modelName}` : `Update ${modelName}`;
+            document.getElementById('commitDescription').value = '';
+            document.getElementById('prTitle').value = '';
+            
+            // Update displays
+            document.getElementById('commitBranchDisplay').textContent = state.github.currentBranch;
+            document.getElementById('prBaseBranch').textContent = state.github.currentBranch;
+            
+            // Determine mode based on branch - main always uses PR, feature branch uses direct
+            const isMainBranch = state.github.currentBranch === 'main' || state.github.currentBranch === 'master';
+            const mode = isMainBranch ? 'pr' : 'direct';
+            
+            // Hide tabs - behavior is automatic based on branch
+            const tabsContainer = document.querySelector('.commit-mode-tabs');
+            tabsContainer.style.display = 'none';
+            
+            // Set mode
+            setCommitMode(mode);
+            
+            document.getElementById('commitModal').classList.add('active');
+        }
+        
+        // Close commit modal
+        function closeCommitModal() {
+            document.getElementById('commitModal').classList.remove('active');
+        }
+        
+        // Set commit mode (direct or pr)
+        function setCommitMode(mode) {
+            state.commitMode = mode;
+            
+            // Update tabs
+            document.getElementById('directModeTab').classList.toggle('active', mode === 'direct');
+            document.getElementById('prModeTab').classList.toggle('active', mode === 'pr');
+            
+            // Show/hide PR fields
+            document.getElementById('prFields').classList.toggle('active', mode === 'pr');
+            
+            // Update button text
+            const btn = document.getElementById('executeCommitBtn');
+            btn.textContent = mode === 'direct' ? 'Commit' : 'Create PR';
+        }
+        
+        // Execute commit (direct or PR based on mode)
+        async function executeCommit() {
+            const commitMessage = document.getElementById('commitMessage').value.trim();
+            
+            if (!commitMessage) {
+                showToast('Please enter a commit message', 'error');
+                return;
+            }
+            
+            if (state.commitMode === 'direct') {
+                await commitDirect(commitMessage);
+            } else {
+                await commitWithPR(commitMessage);
+            }
+        }
+        
+        // Direct commit to current branch
+        async function commitDirect(commitMessage) {
+            const btn = document.getElementById('executeCommitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div><span>Committing...</span>';
+            
+            try {
+                const editor = document.getElementById('jsonEditor');
+                const jsonData = JSON.parse(editor.value);
+                
+                const fileName = getModelFileName(jsonData);
+                const filePath = state.github.path + fileName;
+                
+                // Get current file SHA
+                let fileSha = state.githubSha;
+                if (!fileSha) {
+                    try {
+                        const existingFile = await fetch(
+                            `https://api.github.com/repos/${state.github.repo}/contents/${filePath}?ref=${state.github.currentBranch}`,
+                            {
+                                headers: {
+                                    'Authorization': `Bearer ${state.github.token}`,
+                                    'Accept': 'application/vnd.github.v3+json'
+                                }
+                            }
+                        );
+                        if (existingFile.ok) {
+                            const data = await existingFile.json();
+                            fileSha = data.sha;
+                        }
+                    } catch (e) {}
+                }
+                
+                // Commit file
+                const content = btoa(unescape(encodeURIComponent(JSON.stringify(jsonData, null, 2))));
+                const description = document.getElementById('commitDescription').value.trim();
+                const fullMessage = description ? `${commitMessage}\n\n${description}` : commitMessage;
+                
+                const fileBody = {
+                    message: fullMessage,
+                    content: content,
+                    branch: state.github.currentBranch
+                };
+                if (fileSha) fileBody.sha = fileSha;
+                
+                const response = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/contents/${filePath}`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(fileBody)
+                    }
+                );
+                
+                if (!response.ok) throw new Error('Failed to commit file');
+                
+                const data = await response.json();
+                state.githubSha = data.content.sha;
+                state.originalJson = editor.value;
+                state.isNewModel = false;
+                
+                showToast('Changes committed successfully!', 'success');
+                closeCommitModal();
+                
+                // Reload commit history
+                loadCommitHistory();
+                
+            } catch (error) {
+                console.error('Commit error:', error);
+                showToast(`Failed to commit: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Commit</span>';
+            }
+        }
+        
+        // Commit with PR
+        async function commitWithPR(commitMessage) {
+            const btn = document.getElementById('executeCommitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div><span>Creating PR...</span>';
+            
+            try {
+                const editor = document.getElementById('jsonEditor');
+                const jsonData = JSON.parse(editor.value);
+                
+                const fileName = getModelFileName(jsonData);
+                const filePath = state.github.path + fileName;
+                const branchName = `update-${fileName.replace('.json', '')}-${Date.now()}`;
+                
+                // 1. Get base branch SHA
+                const mainRef = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/git/ref/heads/${state.github.currentBranch}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (!mainRef.ok) throw new Error('Failed to get base branch');
+                const mainRefData = await mainRef.json();
+                const baseSha = mainRefData.object.sha;
+                
+                // 2. Create new branch
+                const createBranchResp = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/git/refs`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            ref: `refs/heads/${branchName}`,
+                            sha: baseSha
+                        })
+                    }
+                );
+                
+                if (!createBranchResp.ok) throw new Error('Failed to create branch');
+                
+                // 3. Get file SHA if it exists
+                let fileSha = state.githubSha;
+                if (!fileSha) {
+                    try {
+                        const existingFile = await fetch(
+                            `https://api.github.com/repos/${state.github.repo}/contents/${filePath}?ref=${state.github.currentBranch}`,
+                            {
+                                headers: {
+                                    'Authorization': `Bearer ${state.github.token}`,
+                                    'Accept': 'application/vnd.github.v3+json'
+                                }
+                            }
+                        );
+                        if (existingFile.ok) {
+                            const data = await existingFile.json();
+                            fileSha = data.sha;
+                        }
+                    } catch (e) {}
+                }
+                
+                // 4. Commit to new branch
+                const content = btoa(unescape(encodeURIComponent(JSON.stringify(jsonData, null, 2))));
+                const description = document.getElementById('commitDescription').value.trim();
+                const fullMessage = description ? `${commitMessage}\n\n${description}` : commitMessage;
+                
+                const fileBody = {
+                    message: fullMessage,
+                    content: content,
+                    branch: branchName
+                };
+                if (fileSha) fileBody.sha = fileSha;
+                
+                const createFile = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/contents/${filePath}`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(fileBody)
+                    }
+                );
+                
+                if (!createFile.ok) throw new Error('Failed to commit file');
+                
+                // 5. Create PR
+                const prTitle = document.getElementById('prTitle').value.trim() || commitMessage;
+                const prBody = description || `Changes to ${fileName}`;
+                
+                const createPR = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/pulls`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            title: prTitle,
+                            body: prBody,
+                            head: branchName,
+                            base: state.github.currentBranch
+                        })
+                    }
+                );
+                
+                if (!createPR.ok) throw new Error('Failed to create PR');
+                const prData = await createPR.json();
+                
+                state.isNewModel = false;
+                
+                showToast('Pull request created successfully!', 'success');
+                closeCommitModal();
+                
+                // Open PR in new tab
+                window.open(prData.html_url, '_blank');
+                
+            } catch (error) {
+                console.error('PR creation error:', error);
+                showToast(`Failed to create PR: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Create PR</span>';
+            }
+        }
+        
+        // Create PR from current feature branch to main
+        async function createPRToMain() {
+            if (!state.github.connected) {
+                showToast('Not connected to GitHub', 'error');
+                return;
+            }
+            
+            const isMainBranch = state.github.currentBranch === 'main' || state.github.currentBranch === 'master';
+            if (isMainBranch) {
+                showToast('Already on main branch', 'error');
+                return;
+            }
+            
+            // Prompt for PR title
+            const prTitle = prompt('Enter PR title:', `Merge ${state.github.currentBranch} to main`);
+            if (!prTitle) return;
+            
+            const prBody = prompt('Enter PR description (optional):', '');
+            
+            try {
+                const createPR = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/pulls`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            title: prTitle,
+                            body: prBody || `Merge changes from ${state.github.currentBranch}`,
+                            head: state.github.currentBranch,
+                            base: 'main'
+                        })
+                    }
+                );
+                
+                if (!createPR.ok) {
+                    const errorData = await createPR.json();
+                    throw new Error(errorData.message || 'Failed to create PR');
+                }
+                
+                const prData = await createPR.json();
+                
+                showToast(`Pull request created: #${prData.number}`, 'success');
+                
+                // Open PR in new tab
+                window.open(prData.html_url, '_blank');
+                
+            } catch (error) {
+                console.error('PR creation error:', error);
+                showToast(`Failed to create PR: ${error.message}`, 'error');
+            }
+        }
+        
+        // Update commit changes to use the new modal
+        function commitChanges() {
+            openCommitModal();
+        }
+        
+        // Update PR button visibility based on current branch
+        function updatePRButtonVisibility() {
+            const openPRBtn = document.getElementById('openPRBtn');
+            if (!openPRBtn) return;
+            
+            const isMainBranch = state.github.currentBranch === 'main' || state.github.currentBranch === 'master';
+            const isConnected = state.github.connected;
+            const hasModel = state.selectedModel !== null;
+            
+            // Show PR button only when on a feature branch, connected, and has a model
+            if (isConnected && hasModel && !isMainBranch) {
+                openPRBtn.style.display = 'inline-flex';
+                openPRBtn.disabled = false;
+            } else {
+                openPRBtn.style.display = 'none';
+            }
+        }
+        
+        // List files in GitHub repo
+        async function listGitHubFiles() {
+            if (!state.github.connected) return [];
+            
+            try {
+                const response = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/contents/${state.github.path}?ref=${state.github.branch}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (!response.ok) return [];
+                
+                const files = await response.json();
+                return files.filter(f => f.name.endsWith('.json')).map(f => f.name);
+                
+            } catch (error) {
+                console.error('Error listing GitHub files:', error);
+                return [];
+            }
+        }
+        
+        // Export all data models to GitHub
+        async function exportAllToGitHub() {
+            if (!state.github.connected || !state.accessToken) {
+                showToast('Please connect to both Sigma and GitHub first', 'error');
+                return;
+            }
+            
+            if (state.dataModels.length === 0) {
+                showToast('No data models to export', 'warning');
+                return;
+            }
+            
+            const confirmExport = confirm(`Export ${state.dataModels.length} data models to GitHub?\n\nThis will create/update files in: ${state.github.path}`);
+            if (!confirmExport) return;
+            
+            const btn = document.getElementById('ghExportAllBtn');
+            btn.disabled = true;
+            
+            let success = 0;
+            let failed = 0;
+            
+            for (let i = 0; i < state.dataModels.length; i++) {
+                const model = state.dataModels[i];
+                btn.innerHTML = `<div class="spinner"></div><span>Exporting ${i + 1}/${state.dataModels.length}...</span>`;
+                updateStatus('loading', `Exporting: ${model.name || 'Untitled'}`);
+                
+                try {
+                    // Fetch the full spec
+                    const specResponse = await fetch(`${state.baseUrl}/v3alpha/datamodels/${model.dataModelId}/spec`, {
+                        headers: {
+                            'Authorization': `Bearer ${state.accessToken}`
+                        }
+                    });
+                    
+                    if (!specResponse.ok) {
+                        throw new Error('Failed to fetch spec');
+                    }
+                    
+                    const specData = await specResponse.json();
+                    const fileName = getModelFileName(specData);
+                    const filePath = state.github.path + fileName;
+                    
+                    // Check for existing file
+                    let sha = null;
+                    try {
+                        const existingFile = await fetch(
+                            `https://api.github.com/repos/${state.github.repo}/contents/${filePath}?ref=${state.github.branch}`,
+                            {
+                                headers: {
+                                    'Authorization': `Bearer ${state.github.token}`,
+                                    'Accept': 'application/vnd.github.v3+json'
+                                }
+                            }
+                        );
+                        if (existingFile.ok) {
+                            const data = await existingFile.json();
+                            sha = data.sha;
+                        }
+                    } catch (e) {
+                        // File doesn't exist
+                    }
+                    
+                    // Push to GitHub
+                    const content = btoa(unescape(encodeURIComponent(JSON.stringify(specData, null, 2))));
+                    const body = {
+                        message: `Export ${specData.name || 'data model'}`,
+                        content: content,
+                        branch: state.github.branch
+                    };
+                    if (sha) body.sha = sha;
+                    
+                    const pushResponse = await fetch(
+                        `https://api.github.com/repos/${state.github.repo}/contents/${filePath}`,
+                        {
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `Bearer ${state.github.token}`,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(body)
+                        }
+                    );
+                    
+                    if (!pushResponse.ok) {
+                        throw new Error('Failed to push to GitHub');
+                    }
+                    
+                    success++;
+                    
+                    // Small delay to avoid rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                } catch (error) {
+                    console.error(`Error exporting ${model.name}:`, error);
+                    failed++;
+                }
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = '<span>Initial Export to GitHub</span>';
+            
+            if (failed === 0) {
+                showToast(`Successfully exported ${success} data models`, 'success');
+            } else {
+                showToast(`Exported ${success} models, ${failed} failed`, 'warning');
+            }
+            
+            updateStatus('connected', `Export complete: ${success}/${state.dataModels.length}`);
+        }
+        
+        // Toast notification
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.2s ease reverse';
+                setTimeout(() => toast.remove(), 200);
+            }, 4000);
+        }
+        
+        // Update status
+        function updateStatus(status, text) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            indicator.className = 'status-indicator ' + status;
+            statusText.textContent = text;
+        }
+        
+        // Connect to Sigma
+        async function connect() {
+            const clientId = document.getElementById('clientId').value.trim();
+            const clientSecret = document.getElementById('clientSecret').value.trim();
+            
+            if (!clientId || !clientSecret) {
+                showToast('Please enter both Client ID and Client Secret', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('connectBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div><span>Connecting...</span>';
+            updateStatus('loading', 'Authenticating...');
+            
+            try {
+                // Get access token
+                const tokenResponse = await fetch(`${state.baseUrl}/v2/auth/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({
+                        grant_type: 'client_credentials',
+                        client_id: clientId,
+                        client_secret: clientSecret
+                    })
+                });
+                
+                if (!tokenResponse.ok) {
+                    const error = await tokenResponse.json();
+                    throw new Error(error.message || 'Authentication failed');
+                }
+                
+                const tokenData = await tokenResponse.json();
+                state.accessToken = tokenData.access_token;
+                state.tokenExpiry = Date.now() + (tokenData.expires_in * 1000);
+                
+                updateStatus('connected', 'Connected to Sigma');
+                showToast('Successfully connected to Sigma!', 'success');
+                
+                // Save credentials
+                saveCredentials();
+                
+                // Enable buttons
+                document.getElementById('refreshBtn').disabled = false;
+                
+                // Load data models
+                await loadDataModels();
+                
+            } catch (error) {
+                console.error('Connection error:', error);
+                updateStatus('error', 'Connection failed');
+                showToast(`Connection failed: ${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Connect to Sigma</span>';
+            }
+        }
+        
+        // Load data models
+        async function loadDataModels() {
+            updateStatus('loading', 'Loading data models...');
+            
+            try {
+                let allModels = [];
+                let page = null;
+                let hasMore = true;
+                const limit = 50;
+                
+                // Paginate through all results
+                while (hasMore) {
+                    const url = new URL(`${state.baseUrl}/v2/datamodels`);
+                    url.searchParams.set('limit', limit.toString());
+                    if (page) {
+                        url.searchParams.set('page', page);
+                    }
+                    
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `Bearer ${state.accessToken}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to load data models');
+                    }
+                    
+                    const data = await response.json();
+                    const entries = data.entries || [];
+                    allModels = allModels.concat(entries);
+                    
+                    // Check if more pages exist
+                    hasMore = data.hasMore === true && data.nextPage;
+                    page = data.nextPage;
+                    
+                    // Update progress
+                    if (data.total) {
+                        updateStatus('loading', `Loading data models... (${allModels.length}/${data.total})`);
+                    }
+                    
+                    // Safety break
+                    if (!entries.length) break;
+                }
+                
+                // Sort alphabetically by name
+                allModels.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                
+                state.dataModels = allModels;
+                state.filteredModels = allModels;
+                
+                // dataModels entries include: dataModelId, name, url, createdBy, updatedBy, createdAt, updatedAt
+                // We also need inodeId for renaming - it's typically available in the response
+                
+                renderModelsList();
+                updateStatus('connected', `Connected • ${state.dataModels.length} data models`);
+                
+                // Enable Export All and New Model if GitHub is also connected
+                if (state.github.connected) {
+                    document.getElementById('ghExportAllBtn').disabled = false;
+                    document.getElementById('newModelBtn').disabled = false;
+                }
+                
+            } catch (error) {
+                console.error('Load error:', error);
+                updateStatus('error', 'Failed to load data models');
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Filter models by search query
+        function filterModels(query) {
+            const searchTerm = query.toLowerCase().trim();
+            if (!searchTerm) {
+                state.filteredModels = state.dataModels;
+            } else {
+                state.filteredModels = state.dataModels.filter(model => 
+                    (model.name || '').toLowerCase().includes(searchTerm)
+                );
+            }
+            renderModelsList();
+        }
+        
+        // Refresh models
+        async function refreshModels() {
+            if (!state.accessToken) return;
+            // Clear search
+            const searchInput = document.getElementById('modelsSearch');
+            if (searchInput) searchInput.value = '';
+            await loadDataModels();
+            showToast('Data models refreshed', 'success');
+        }
+        
+        // Create a new data model
+        // Track wizard state
+        let wizardState = {
+            tables: [],
+            connections: [],
+            workspaces: [],
+            folders: [],
+            locationType: 'workspace' // 'workspace' or 'personal'
+        };
+        
+        function selectLocationType(type) {
+            wizardState.locationType = type;
+            
+            // Update button states
+            document.getElementById('locTypeWorkspace').classList.toggle('active', type === 'workspace');
+            document.getElementById('locTypePersonal').classList.toggle('active', type === 'personal');
+            
+            // Show/hide workspace dropdown
+            document.getElementById('workspaceGroup').style.display = type === 'workspace' ? 'block' : 'none';
+            
+            // Reset folder dropdown
+            const folderSelect = document.getElementById('newModelFolderId');
+            
+            if (type === 'workspace') {
+                folderSelect.innerHTML = '<option value="">Select a workspace first...</option>';
+                folderSelect.disabled = true;
+                // Reset workspace selection
+                document.getElementById('newModelWorkspaceId').value = '';
+            } else {
+                // Load personal folders (My Documents)
+                loadPersonalFolders();
+            }
+        }
+        
+        async function loadPersonalFolders() {
+            const select = document.getElementById('newModelFolderId');
+            select.innerHTML = '<option value="">Loading folders...</option>';
+            select.disabled = true;
+            
+            try {
+                // Get personal files/folders (no parentId = root/My Documents level)
+                const response = await fetch(`${state.baseUrl}/v2/files?typeFilters=folder`, {
+                    headers: { 'Authorization': `Bearer ${state.accessToken}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load folders');
+                
+                const data = await response.json();
+                wizardState.folders = data.entries || [];
+                
+                select.innerHTML = '';
+                
+                // Add "My Documents root" option
+                const rootOption = document.createElement('option');
+                rootOption.value = 'personal';
+                rootOption.textContent = '📁 My Documents (Root)';
+                select.appendChild(rootOption);
+                
+                // Add folders
+                wizardState.folders.forEach(folder => {
+                    const option = document.createElement('option');
+                    option.value = folder.id || folder.inodeId;
+                    option.textContent = '📁 ' + (folder.name || folder.id);
+                    select.appendChild(option);
+                });
+                
+                select.disabled = false;
+                
+            } catch (error) {
+                console.error('Failed to load personal folders:', error);
+                select.innerHTML = '<option value="">Failed to load folders</option>';
+                select.disabled = true;
+            }
+        }
+        
+        async function loadWorkspaces() {
+            const select = document.getElementById('newModelWorkspaceId');
+            select.innerHTML = '<option value="">Loading workspaces...</option>';
+            select.disabled = true;
+            
+            try {
+                const response = await fetch(`${state.baseUrl}/v2/workspaces`, {
+                    headers: { 'Authorization': `Bearer ${state.accessToken}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load workspaces');
+                
+                const data = await response.json();
+                wizardState.workspaces = data.entries || [];
+                
+                select.innerHTML = '<option value="">Select a workspace...</option>';
+                wizardState.workspaces.forEach(ws => {
+                    const option = document.createElement('option');
+                    option.value = ws.workspaceId;
+                    option.textContent = ws.name || ws.workspaceId;
+                    select.appendChild(option);
+                });
+                select.disabled = false;
+                
+                // Add change listener
+                select.onchange = function() {
+                    if (this.value) {
+                        loadFolders(this.value);
+                    } else {
+                        const folderSelect = document.getElementById('newModelFolderId');
+                        folderSelect.innerHTML = '<option value="">Select a workspace first...</option>';
+                        folderSelect.disabled = true;
+                    }
+                };
+                
+            } catch (error) {
+                console.error('Failed to load workspaces:', error);
+                select.innerHTML = '<option value="">Failed to load workspaces</option>';
+                select.disabled = true;
+            }
+        }
+        
+        async function loadFolders(workspaceId) {
+            const select = document.getElementById('newModelFolderId');
+            select.innerHTML = '<option value="">Loading folders...</option>';
+            select.disabled = true;
+            
+            try {
+                // Get files in the workspace, filter for folders
+                const response = await fetch(`${state.baseUrl}/v2/files?typeFilters=folder&parentId=${workspaceId}`, {
+                    headers: { 'Authorization': `Bearer ${state.accessToken}` }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load folders');
+                
+                const data = await response.json();
+                wizardState.folders = data.entries || [];
+                
+                select.innerHTML = '';
+                
+                // Add workspace root as an option
+                const rootOption = document.createElement('option');
+                rootOption.value = workspaceId;
+                rootOption.textContent = '📁 (Workspace Root)';
+                select.appendChild(rootOption);
+                
+                // Add folders
+                wizardState.folders.forEach(folder => {
+                    const option = document.createElement('option');
+                    option.value = folder.id || folder.inodeId;
+                    option.textContent = '📁 ' + (folder.name || folder.id);
+                    select.appendChild(option);
+                });
+                
+                select.disabled = false;
+                
+            } catch (error) {
+                console.error('Failed to load folders:', error);
+                select.innerHTML = '<option value="">Failed to load folders</option>';
+                select.disabled = true;
+            }
+        }
+        
+        async function loadConnections() {
+            const select = document.getElementById('newModelConnectionId');
+            select.innerHTML = '<option value="">Loading connections...</option>';
+            select.disabled = true;
+            
+            try {
+                const response = await fetch(`${state.baseUrl}/v2/connections`, {
+                    headers: {
+                        'Authorization': `Bearer ${state.accessToken}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load connections');
+                }
+                
+                const data = await response.json();
+                wizardState.connections = data.entries || [];
+                
+                select.innerHTML = '<option value="">Select a connection...</option>';
+                wizardState.connections.forEach(conn => {
+                    const option = document.createElement('option');
+                    option.value = conn.connectionId;
+                    option.textContent = conn.name;
+                    select.appendChild(option);
+                });
+                select.disabled = false;
+                
+            } catch (error) {
+                console.error('Failed to load connections:', error);
+                select.innerHTML = '<option value="">Failed to load - enter ID manually</option>';
+                // Fall back to text input
+                const parent = select.parentElement;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'form-input';
+                input.id = 'newModelConnectionId';
+                input.placeholder = 'Enter connection ID manually';
+                parent.replaceChild(input, select);
+            }
+        }
+        
+        function newDataModel() {
+            if (!state.github.connected) {
+                showToast('Please connect to GitHub first', 'error');
+                return;
+            }
+            
+            if (!state.accessToken) {
+                showToast('Please connect to Sigma first', 'error');
+                return;
+            }
+            
+            // Reset wizard state
+            wizardState.tables = [];
+            wizardState.locationType = 'workspace';
+            document.getElementById('newModelName').value = '';
+            document.getElementById('newModelDescription').value = '';
+            document.getElementById('tablesContainer').innerHTML = '';
+            
+            // Reset location type buttons
+            document.getElementById('locTypeWorkspace').classList.add('active');
+            document.getElementById('locTypePersonal').classList.remove('active');
+            document.getElementById('workspaceGroup').style.display = 'block';
+            
+            // Reset workspace dropdown
+            const wsSelect = document.getElementById('newModelWorkspaceId');
+            wsSelect.innerHTML = '<option value="">Loading workspaces...</option>';
+            wsSelect.disabled = true;
+            
+            // Reset folder dropdown
+            const folderSelect = document.getElementById('newModelFolderId');
+            folderSelect.innerHTML = '<option value="">Select a workspace first...</option>';
+            folderSelect.disabled = true;
+            
+            // Reset connection dropdown
+            const connSelect = document.getElementById('newModelConnectionId');
+            if (connSelect.tagName === 'SELECT') {
+                connSelect.innerHTML = '<option value="">Loading connections...</option>';
+                connSelect.disabled = true;
+            }
+            
+            // Add one table by default
+            addTableConfig();
+            
+            // Show modal
+            document.getElementById('newModelModal').classList.add('active');
+            
+            // Load workspaces and connections
+            loadWorkspaces();
+            loadConnections();
+        }
+        
+        function closeNewModelModal() {
+            document.getElementById('newModelModal').classList.remove('active');
+        }
+        
+        function showSetupGuide() {
+            document.getElementById('setupGuideModal').classList.add('active');
+        }
+        
+        function closeSetupGuide() {
+            document.getElementById('setupGuideModal').classList.remove('active');
+        }
+        
+        let tableCounter = 0;
+        
+        function addTableConfig() {
+            tableCounter++;
+            const tableId = `table_${tableCounter}`;
+            const container = document.getElementById('tablesContainer');
+            
+            const tableHtml = `
+                <div class="table-config" id="${tableId}">
+                    <div class="table-config-header">
+                        <span class="table-config-title">Table ${tableCounter}</span>
+                        <button class="table-config-remove" onclick="removeTableConfig('${tableId}')">Remove</button>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Table Name *</label>
+                        <input type="text" class="form-input table-name" placeholder="e.g., Orders">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Source Path * (Database / Schema / Table)</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                            <input type="text" class="form-input table-database" placeholder="DATABASE">
+                            <input type="text" class="form-input table-schema" placeholder="SCHEMA">
+                            <input type="text" class="form-input table-source" placeholder="TABLE_NAME">
+                        </div>
+                        <div class="form-hint">The warehouse path to your source table</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Columns</label>
+                        <div class="column-list" id="${tableId}_columns"></div>
+                        <div class="add-column-row">
+                            <input type="text" class="form-input" id="${tableId}_newColumn" placeholder="Column name" onkeypress="if(event.key==='Enter'){addColumn('${tableId}'); event.preventDefault();}">
+                            <button class="btn btn-secondary btn-small" onclick="addColumn('${tableId}')">Add</button>
+                        </div>
+                        <div class="form-hint">Press Enter or click Add for each column. Leave empty to add columns manually in JSON.</div>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', tableHtml);
+        }
+        
+        function removeTableConfig(tableId) {
+            const element = document.getElementById(tableId);
+            if (element) {
+                element.remove();
+            }
+        }
+        
+        function addColumn(tableId) {
+            const input = document.getElementById(`${tableId}_newColumn`);
+            const columnName = input.value.trim();
+            
+            if (!columnName) return;
+            
+            const columnList = document.getElementById(`${tableId}_columns`);
+            const columnId = `${tableId}_col_${Date.now()}`;
+            
+            const columnHtml = `
+                <span class="column-tag" id="${columnId}" data-column-name="${columnName}">
+                    ${columnName}
+                    <button class="column-tag-remove" onclick="removeColumn('${columnId}')">&times;</button>
+                </span>
+            `;
+            
+            columnList.insertAdjacentHTML('beforeend', columnHtml);
+            input.value = '';
+            input.focus();
+        }
+        
+        function removeColumn(columnId) {
+            const element = document.getElementById(columnId);
+            if (element) {
+                element.remove();
+            }
+        }
+        
+        function createDataModelFromWizard() {
+            const modelName = document.getElementById('newModelName').value.trim();
+            const description = document.getElementById('newModelDescription').value.trim();
+            const workspaceId = document.getElementById('newModelWorkspaceId').value;
+            const folderId = document.getElementById('newModelFolderId').value;
+            const connectionId = document.getElementById('newModelConnectionId').value.trim();
+            
+            if (!modelName) {
+                showToast('Please enter a data model name', 'error');
+                return;
+            }
+            
+            // Only require workspace if workspace location type is selected
+            if (wizardState.locationType === 'workspace' && !workspaceId) {
+                showToast('Please select a workspace', 'error');
+                return;
+            }
+            
+            if (!folderId) {
+                showToast('Please select a folder', 'error');
+                return;
+            }
+            
+            if (!connectionId) {
+                showToast('Please select a connection', 'error');
+                return;
+            }
+            
+            // Determine actual folder ID (for personal root, we may need to handle differently)
+            const actualFolderId = folderId === 'personal' ? null : folderId;
+            
+            // Gather table configurations
+            const tableConfigs = document.querySelectorAll('.table-config');
+            const elements = [];
+            
+            tableConfigs.forEach((tableEl, index) => {
+                const tableName = tableEl.querySelector('.table-name').value.trim();
+                const database = tableEl.querySelector('.table-database').value.trim();
+                const schema = tableEl.querySelector('.table-schema').value.trim();
+                const sourceTable = tableEl.querySelector('.table-source').value.trim();
+                
+                if (!tableName || !database || !schema || !sourceTable) {
+                    return; // Skip incomplete tables
+                }
+                
+                // Get columns
+                const columnTags = tableEl.querySelectorAll('.column-tag');
+                const columns = [];
+                
+                columnTags.forEach((tag, colIndex) => {
+                    const colName = tag.getAttribute('data-column-name');
+                    if (colName) {
+                        columns.push({
+                            id: `col_${index}_${colIndex}_${Date.now()}`,
+                            name: colName,
+                            formula: `[${sourceTable}/${colName}]`
+                        });
+                    }
+                });
+                
+                elements.push({
+                    id: `element_${index}_${Date.now()}`,
+                    name: tableName,
+                    kind: "table",
+                    source: {
+                        connectionId: connectionId,
+                        kind: "warehouse-table",
+                        path: [database, schema, sourceTable]
+                    },
+                    columns: columns
+                });
+            });
+            
+            if (elements.length === 0) {
+                showToast('Please configure at least one table with all required fields', 'error');
+                return;
+            }
+            
+            // Create the data model template
+            const template = {
+                schemaVersion: 1,
+                name: modelName,
+                description: description,
+                pages: [
+                    {
+                        id: "page_" + Date.now(),
+                        name: "Page 1",
+                        elements: elements
+                    }
+                ]
+            };
+            
+            // Add folderId if a specific folder is selected (not personal root)
+            if (actualFolderId) {
+                template.folderId = actualFolderId;
+            }
+            
+            // Set up state for the new model
+            state.selectedModel = template;
+            state.selectedModelMeta = null;
+            state.originalJson = null;
+            state.githubSha = null;
+            state.isNewModel = true;
+            
+            // Update UI
+            document.getElementById('editorTitle').textContent = modelName + ' (New)';
+            document.getElementById('jsonEditor').value = JSON.stringify(template, null, 2);
+            
+            // Enable buttons
+            document.getElementById('formatBtn').disabled = false;
+            document.getElementById('copyBtn').disabled = false;
+            document.getElementById('sigmaRefreshBtn').disabled = true; // Can't refresh new model from Sigma
+            document.getElementById('commitBtn').disabled = false;
+            
+            // Clear active state from model list
+            document.querySelectorAll('.model-item').forEach(el => el.classList.remove('active'));
+            
+            // Close modal
+            closeNewModelModal();
+            
+            updateStatus('connected', `Creating: ${modelName}`);
+            showToast(`Created data model with ${elements.length} table(s). Review the JSON and click Commit Changes.`, 'success');
+        }
+        
+        // Render models list
+        function renderModelsList() {
+            const container = document.getElementById('modelsList');
+            const models = state.filteredModels || state.dataModels || [];
+            const totalCount = state.dataModels?.length || 0;
+            const filteredCount = models.length;
+            
+            // Update count display
+            const countDisplay = document.getElementById('modelsCount');
+            if (countDisplay) {
+                if (filteredCount !== totalCount) {
+                    countDisplay.textContent = `(${filteredCount}/${totalCount})`;
+                } else {
+                    countDisplay.textContent = `(${totalCount})`;
+                }
+            }
+            
+            if (models.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <div class="empty-state-icon">${totalCount > 0 ? '🔍' : '📭'}</div>
+                        <p>${totalCount > 0 ? 'No matching data models' : 'No data models found in your organization'}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = models.map(model => `
+                <div class="model-item ${state.selectedModel?.dataModelId === model.dataModelId ? 'active' : ''}" 
+                     onclick="selectModel('${model.dataModelId}')">
+                    <div class="model-name">${escapeHtml(model.name || 'Untitled')}</div>
+                    <div class="model-meta">
+                        <span>Updated: ${formatDate(model.updatedAt)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Format date
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+        
+        // Select a model
+        async function selectModel(dataModelId) {
+            updateStatus('loading', 'Loading data model...');
+            
+            // Clear new model flag since we're selecting an existing one
+            state.isNewModel = false;
+            
+            // Store the model metadata from the list (may include inodeId)
+            state.selectedModelMeta = state.dataModels.find(m => m.dataModelId === dataModelId);
+            
+            try {
+                // Fetch the JSON representation using v3alpha endpoint
+                const response = await fetch(`${state.baseUrl}/v3alpha/datamodels/${dataModelId}/spec`, {
+                    headers: {
+                        'Authorization': `Bearer ${state.accessToken}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to load data model');
+                }
+                
+                const data = await response.json();
+                state.selectedModel = data;
+                state.originalJson = JSON.stringify(data, null, 2);
+                
+                // Update UI
+                document.getElementById('jsonEditor').value = state.originalJson;
+                document.getElementById('editorTitle').textContent = data.name || 'Untitled Data Model';
+                
+                // Enable buttons
+                document.getElementById('formatBtn').disabled = false;
+                document.getElementById('copyBtn').disabled = false;
+                document.getElementById('sigmaRefreshBtn').disabled = false; // Can refresh from Sigma
+                
+                // Enable GitHub buttons if connected
+                if (state.github.connected) {
+                    document.getElementById('commitBtn').disabled = false;
+                    
+                    // Try to load from GitHub 
+                    await loadFromGitHub(data);
+                    
+                    // Load commit history for history panel
+                    loadCommitHistory();
+                    
+                    // Update PR button visibility based on current branch
+                    updatePRButtonVisibility();
+                }
+                
+                renderModelsList();
+                updateStatus('connected', `Editing: ${data.name || 'Untitled'}`);
+                showToast('Data model loaded successfully', 'success');
+                
+            } catch (error) {
+                console.error('Select error:', error);
+                updateStatus('error', 'Failed to load data model');
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Rename data model using files API
+        // Format JSON
+        function formatJson() {
+            const editor = document.getElementById('jsonEditor');
+            try {
+                const parsed = JSON.parse(editor.value);
+                editor.value = JSON.stringify(parsed, null, 2);
+                showToast('JSON formatted', 'success');
+            } catch (error) {
+                showToast('Invalid JSON - cannot format', 'error');
+            }
+        }
+        
+        // Copy JSON
+        function copyJson() {
+            const editor = document.getElementById('jsonEditor');
+            navigator.clipboard.writeText(editor.value);
+            showToast('JSON copied to clipboard', 'success');
+        }
+        
+        // ==================== HISTORY PANEL ====================
+        
+        // Toggle history panel
+        function toggleHistoryPanel() {
+            const panel = document.getElementById('historyPanel');
+            const container = document.querySelector('.app-container');
+            const toggleBtn = panel.querySelector('.history-toggle');
+            
+            panel.classList.toggle('collapsed');
+            container.classList.toggle('history-collapsed');
+            toggleBtn.textContent = panel.classList.contains('collapsed') ? '▶' : '◀';
+        }
+        
+        // Expand history panel if clicked while collapsed
+        function expandHistoryIfCollapsed(event) {
+            const panel = document.getElementById('historyPanel');
+            if (panel.classList.contains('collapsed')) {
+                // Only expand if not clicking the toggle button (which handles itself)
+                if (!event.target.classList.contains('history-toggle')) {
+                    toggleHistoryPanel();
+                }
+            }
+        }
+        
+        // Load commit history for current model
+        async function loadCommitHistory() {
+            if (!state.github.connected || !state.selectedModelMeta) {
+                return;
+            }
+            
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '<div style="padding: 20px; text-align: center;"><div class="spinner"></div><p style="color: var(--text-muted); margin-top: 12px; font-size: 12px;">Loading history...</p></div>';
+            
+            const fileName = getModelFileName(state.selectedModelMeta);
+            const filePath = state.github.path + fileName;
+            
+            try {
+                const response = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/commits?path=${filePath}&sha=${state.github.currentBranch}&per_page=20`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        historyList.innerHTML = `
+                            <div class="empty-state" style="padding: 30px 16px; text-align: center;">
+                                <div style="font-size: 32px; margin-bottom: 12px;">🆕</div>
+                                <p style="color: var(--text-muted); font-size: 12px;">No commits yet for this model</p>
+                                <p style="color: var(--text-muted); font-size: 11px; margin-top: 8px;">Commit changes to start tracking history</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    throw new Error('Failed to fetch commit history');
+                }
+                
+                const commits = await response.json();
+                
+                if (commits.length === 0) {
+                    historyList.innerHTML = `
+                        <div class="empty-state" style="padding: 30px 16px; text-align: center;">
+                            <div style="font-size: 32px; margin-bottom: 12px;">🆕</div>
+                            <p style="color: var(--text-muted); font-size: 12px;">No commits yet for this model</p>
+                            <p style="color: var(--text-muted); font-size: 11px; margin-top: 8px;">Commit changes to start tracking history</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Store commits for diff comparison
+                state.commitHistory = commits;
+                
+                renderCommitHistory(commits);
+                
+            } catch (error) {
+                console.error('Error loading commit history:', error);
+                historyList.innerHTML = `
+                    <div class="empty-state" style="padding: 30px 16px; text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>
+                        <p style="color: var(--text-muted); font-size: 12px;">Failed to load history</p>
+                        <button class="btn btn-secondary" style="margin-top: 12px;" onclick="loadCommitHistory()">Retry</button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Render commit history list
+        function renderCommitHistory(commits) {
+            const historyList = document.getElementById('historyList');
+            
+            if (commits.length === 0) {
+                historyList.innerHTML = `
+                    <div class="empty-state" style="padding: 30px 16px; text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 12px;">📋</div>
+                        <p style="color: var(--text-muted); font-size: 12px;">No commits yet</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            historyList.innerHTML = commits.map((commit, index) => {
+                const date = new Date(commit.commit.author.date);
+                const timeAgo = getTimeAgo(date);
+                const sha = commit.sha.substring(0, 7);
+                const message = commit.commit.message.split('\n')[0]; // First line only
+                const author = commit.commit.author.name;
+                const isCurrent = index === 0;
+                
+                return `
+                    <div class="commit-item ${isCurrent ? 'current' : ''}" data-sha="${commit.sha}" data-index="${index}">
+                        <div class="commit-sha">${sha}${isCurrent ? ' (latest)' : ''}</div>
+                        <div class="commit-message">${escapeHtml(message)}</div>
+                        <div class="commit-meta">
+                            <span>${author}</span>
+                            <span>•</span>
+                            <span>${timeAgo}</span>
+                        </div>
+                        ${!isCurrent ? `
+                            <div class="commit-actions">
+                                <button class="btn btn-secondary" onclick="showDiff('${commit.sha}', ${index})">
+                                    View Diff
+                                </button>
+                                <button class="btn btn-secondary" onclick="restoreCommit('${commit.sha}')">
+                                    Restore
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Get time ago string
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            
+            const intervals = {
+                year: 31536000,
+                month: 2592000,
+                week: 604800,
+                day: 86400,
+                hour: 3600,
+                minute: 60
+            };
+            
+            for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+                const interval = Math.floor(seconds / secondsInUnit);
+                if (interval >= 1) {
+                    return interval === 1 ? `1 ${unit} ago` : `${interval} ${unit}s ago`;
+                }
+            }
+            
+            return 'just now';
+        }
+        
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // ==================== DIFF VIEWER ====================
+        
+        // Store for diff comparison
+        state.commitHistory = [];
+        state.diffOldContent = null;
+        state.diffOldSha = null;
+        
+        // Show diff modal
+        async function showDiff(sha, index) {
+            const modal = document.getElementById('diffModal');
+            modal.classList.add('active');
+            
+            // Show loading state
+            document.getElementById('diffOldContent').innerHTML = '<div style="padding: 20px; text-align: center;"><div class="spinner"></div></div>';
+            document.getElementById('diffNewContent').innerHTML = '<div style="padding: 20px; text-align: center;"><div class="spinner"></div></div>';
+            
+            document.getElementById('diffOldSha').textContent = sha.substring(0, 7);
+            document.getElementById('diffNewSha').textContent = 'Current';
+            
+            try {
+                // Fetch the old version content
+                const fileName = getModelFileName(state.selectedModelMeta);
+                const filePath = state.github.path + fileName;
+                
+                const response = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/contents/${filePath}?ref=${sha}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch commit content');
+                }
+                
+                const data = await response.json();
+                const oldContent = decodeURIComponent(escape(atob(data.content)));
+                
+                // Store for restore functionality
+                state.diffOldContent = oldContent;
+                state.diffOldSha = sha;
+                
+                // Get current content
+                const currentContent = document.getElementById('jsonEditor').value;
+                
+                // Render diff
+                renderDiff(oldContent, currentContent);
+                
+            } catch (error) {
+                console.error('Error loading diff:', error);
+                document.getElementById('diffOldContent').innerHTML = '<div style="padding: 20px; color: var(--error);">Failed to load version</div>';
+                document.getElementById('diffNewContent').innerHTML = '<div style="padding: 20px; color: var(--error);">Failed to load version</div>';
+            }
+        }
+        
+        // Render side-by-side diff
+        function renderDiff(oldContent, newContent) {
+            const oldLines = oldContent.split('\n');
+            const newLines = newContent.split('\n');
+            
+            // Simple line-by-line diff
+            const diff = computeLineDiff(oldLines, newLines);
+            
+            // Count additions and deletions
+            let additions = 0;
+            let deletions = 0;
+            
+            diff.forEach(d => {
+                if (d.type === 'add') additions++;
+                if (d.type === 'remove') deletions++;
+            });
+            
+            document.getElementById('diffAdditions').textContent = `+${additions}`;
+            document.getElementById('diffDeletions').textContent = `-${deletions}`;
+            
+            // Render old content
+            let oldHtml = '';
+            let oldLineNum = 0;
+            diff.forEach(d => {
+                if (d.type === 'remove' || d.type === 'same') {
+                    oldLineNum++;
+                    const lineClass = d.type === 'remove' ? 'removed' : '';
+                    oldHtml += `<div class="diff-line ${lineClass}">
+                        <span class="diff-line-number">${oldLineNum}</span>
+                        <span class="diff-line-content">${escapeHtml(d.oldLine || '')}</span>
+                    </div>`;
+                } else if (d.type === 'add') {
+                    // Empty line placeholder for alignment
+                    oldHtml += `<div class="diff-line">
+                        <span class="diff-line-number"></span>
+                        <span class="diff-line-content"></span>
+                    </div>`;
+                }
+            });
+            
+            // Render new content
+            let newHtml = '';
+            let newLineNum = 0;
+            diff.forEach(d => {
+                if (d.type === 'add' || d.type === 'same') {
+                    newLineNum++;
+                    const lineClass = d.type === 'add' ? 'added' : '';
+                    newHtml += `<div class="diff-line ${lineClass}">
+                        <span class="diff-line-number">${newLineNum}</span>
+                        <span class="diff-line-content">${escapeHtml(d.newLine || '')}</span>
+                    </div>`;
+                } else if (d.type === 'remove') {
+                    // Empty line placeholder for alignment
+                    newHtml += `<div class="diff-line">
+                        <span class="diff-line-number"></span>
+                        <span class="diff-line-content"></span>
+                    </div>`;
+                }
+            });
+            
+            document.getElementById('diffOldContent').innerHTML = oldHtml;
+            document.getElementById('diffNewContent').innerHTML = newHtml;
+        }
+        
+        // Compute line-by-line diff using LCS algorithm
+        function computeLineDiff(oldLines, newLines) {
+            // Build LCS table
+            const m = oldLines.length;
+            const n = newLines.length;
+            const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+            
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (oldLines[i - 1] === newLines[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1] + 1;
+                    } else {
+                        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    }
+                }
+            }
+            
+            // Backtrack to find diff
+            const diff = [];
+            let i = m, j = n;
+            
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+                    diff.unshift({ type: 'same', oldLine: oldLines[i - 1], newLine: newLines[j - 1] });
+                    i--;
+                    j--;
+                } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+                    diff.unshift({ type: 'add', newLine: newLines[j - 1] });
+                    j--;
+                } else {
+                    diff.unshift({ type: 'remove', oldLine: oldLines[i - 1] });
+                    i--;
+                }
+            }
+            
+            return diff;
+        }
+        
+        // Close diff modal
+        function closeDiffModal() {
+            document.getElementById('diffModal').classList.remove('active');
+            state.diffOldContent = null;
+            state.diffOldSha = null;
+        }
+        
+        // Restore version from diff modal
+        function restoreVersion() {
+            if (state.diffOldContent) {
+                const editor = document.getElementById('jsonEditor');
+                editor.value = state.diffOldContent;
+                
+                // CRITICAL FIX: Update originalJson so commit detection works
+                state.originalJson = state.diffOldContent;
+                
+                closeDiffModal();
+                showToast(`Restored version ${state.diffOldSha.substring(0, 7)} - ready to commit changes`, 'success');
+            }
+        }
+        
+        // Restore a specific commit directly
+        async function restoreCommit(sha) {
+            if (!confirm(`Restore to commit ${sha.substring(0, 7)}? This will replace the current editor content.`)) {
+                return;
+            }
+            
+            try {
+                const fileName = getModelFileName(state.selectedModelMeta);
+                const filePath = state.github.path + fileName;
+                
+                const response = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/contents/${filePath}?ref=${sha}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${state.github.token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    }
+                );
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch commit content');
+                }
+                
+                const data = await response.json();
+                const content = decodeURIComponent(escape(atob(data.content)));
+                
+                // Update editor
+                const editor = document.getElementById('jsonEditor');
+                editor.value = content;
+                
+                // CRITICAL FIX: Update originalJson so changes are detected
+                state.originalJson = content;
+                
+                // Also update the SHA to the restored version
+                state.githubSha = data.sha;
+                
+                showToast(`Restored to ${sha.substring(0, 7)} - ready to commit changes`, 'success');
+                
+            } catch (error) {
+                console.error('Error restoring commit:', error);
+                showToast('Failed to restore commit', 'error');
+            }
+        }
+        
+        // Handle keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + S for commit
+            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                e.preventDefault();
+                if (state.github.connected && state.selectedModel) {
+                    openCommitModal();
+                }
+            }
+            
+            // Ctrl/Cmd + B for branch management
+            if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+                e.preventDefault();
+                if (state.github.connected) {
+                    openBranchModal();
+                }
+            }
+            
+            // Escape to close modals
+            if (e.key === 'Escape') {
+                const commitModal = document.getElementById('commitModal');
+                const branchModal = document.getElementById('branchModal');
+                const diffModal = document.getElementById('diffModal');
+                
+                if (commitModal && commitModal.classList.contains('active')) {
+                    closeCommitModal();
+                } else if (branchModal && branchModal.classList.contains('active')) {
+                    closeBranchModal();
+                } else if (diffModal && diffModal.classList.contains('active')) {
+                    closeDiffModal();
+                }
+            }
+        });
+        
+        // Auto-resize textarea
+        const editor = document.getElementById('jsonEditor');
+        editor.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.max(this.scrollHeight, 500) + 'px';
+        });
+        
+        // On page load, try to auto-connect with saved credentials
+        window.addEventListener('DOMContentLoaded', () => {
+            const { sigmaData, githubData } = loadCredentials();
+            
+            // Show that credentials are loaded
+            if (sigmaData?.clientId || githubData?.token) {
+                setTimeout(autoConnect, 500);
+            }
+        });
+    </script>
+</body>
+</html>
