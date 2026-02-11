@@ -1370,7 +1370,51 @@
         .pr-fields.active {
             display: block;
         }
+        /* Format Toggle */
+        .format-toggle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 3px;
+        }
+
+        .format-toggle-btn {
+            padding: 5px 14px;
+            border: none;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            background: transparent;
+            color: var(--text-muted);
+            transition: all 0.15s ease;
+        }
+
+        .format-toggle-btn:hover {
+            color: var(--text-secondary);
+        }
+
+        .format-toggle-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .format-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* YAML syntax colors */
+        .yaml-editor {
+            tab-size: 2;
+        }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -1524,9 +1568,10 @@
                         <div class="tooltip-text">
                             <strong>Workflow:</strong><br>
                             1. Select a data model<br>
-                            2. Edit the JSON<br>
-                            3. Commit (direct or PR)<br>
-                            4. Changes sync to Sigma<br><br>
+                            2. Toggle JSON/YAML display<br>
+                            3. Edit the content<br>
+                            4. Commit (always saves as JSON)<br>
+                            5. Changes sync to Sigma<br><br>
                             <strong>⚠️ Sigma = Source of Truth</strong><br>
                             Use "Pull from Sigma" to sync changes made in Sigma UI<br><br>
                             <strong>⌨️ Shortcuts:</strong> Ctrl+S (commit), Ctrl+B (branches)
@@ -1557,8 +1602,15 @@
             </div>
             
             <div class="editor-container">
-                <div class="editor-tabs">
-                    <div class="editor-tab active">JSON Representation</div>
+                <div class="editor-tabs" style="justify-content: space-between; align-items: center;">
+                    <div class="editor-tab active" id="editorTabLabel">JSON Representation</div>
+                    <div style="display: flex; align-items: center; gap: 12px; padding-right: 4px;">
+                        <span class="format-hint" id="formatHint"></span>
+                        <div class="format-toggle">
+                            <button class="format-toggle-btn active" id="jsonToggleBtn" onclick="switchDisplayFormat('json')">JSON</button>
+                            <button class="format-toggle-btn" id="yamlToggleBtn" onclick="switchDisplayFormat('yaml')">YAML</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="json-editor">
                     <textarea id="jsonEditor" placeholder="Select a data model from the sidebar to edit...
@@ -1566,11 +1618,14 @@
 WORKFLOW:
 1. Connect to Sigma & GitHub
 2. Select a data model
-3. Edit the JSON
-4. Commit changes (direct or via PR)
-5. Changes sync to Sigma automatically
+3. Toggle JSON/YAML with the format switch above
+4. Edit the content
+5. Commit changes (always saved as JSON)
+6. Changes sync to Sigma automatically
 
 TIPS:
+• Use the JSON/YAML toggle to switch display formats
+• Commits always post back as JSON regardless of display format
 • Use 'Pull from Sigma' to sync changes made in Sigma UI
 • Switch branches with the 🌿 selector or Ctrl+B
 • View history and restore previous versions in the History panel
@@ -1969,6 +2024,7 @@ TIPS:
             originalJson: null,
             githubSha: null, // SHA of the file in GitHub (for updates)
             isNewModel: false, // True when creating a new data model
+            displayFormat: 'json', // 'json' or 'yaml' - display only, commits always use JSON
             commitMode: 'direct', // 'direct' or 'pr'
             // GitHub
             github: {
@@ -1988,6 +2044,102 @@ TIPS:
             github: 'sigma_dm_github_creds',
             devMode: 'sigma_dm_dev_mode'
         };
+        
+        // ==================== FORMAT HELPERS ====================
+        
+        // Convert a JSON object to the current display format string
+        function toDisplayFormat(jsonObj) {
+            if (state.displayFormat === 'yaml') {
+                try {
+                    return jsyaml.dump(jsonObj, {
+                        indent: 2,
+                        lineWidth: 120,
+                        noRefs: true,
+                        sortKeys: false,
+                        quotingType: '"',
+                        forceQuotes: false
+                    });
+                } catch (e) {
+                    console.warn('YAML conversion failed, falling back to JSON:', e);
+                    return JSON.stringify(jsonObj, null, 2);
+                }
+            }
+            return JSON.stringify(jsonObj, null, 2);
+        }
+        
+        // Parse editor content back to a JSON object regardless of current format
+        function parseEditorContent(content) {
+            if (!content || !content.trim()) return null;
+            
+            if (state.displayFormat === 'yaml') {
+                return jsyaml.load(content);
+            }
+            return JSON.parse(content);
+        }
+        
+        // Get the editor content as a JSON-formatted string (always JSON, for commits)
+        function getEditorAsJson() {
+            const editor = document.getElementById('jsonEditor');
+            const obj = parseEditorContent(editor.value);
+            return JSON.stringify(obj, null, 2);
+        }
+        
+        // Get the editor content as a parsed object
+        function getEditorAsObject() {
+            const editor = document.getElementById('jsonEditor');
+            return parseEditorContent(editor.value);
+        }
+        
+        // Set the editor content from a JSON object, using the current display format
+        function setEditorContent(jsonObj) {
+            const editor = document.getElementById('jsonEditor');
+            editor.value = toDisplayFormat(jsonObj);
+        }
+        
+        // Switch display format between JSON and YAML
+        function switchDisplayFormat(format) {
+            if (format === state.displayFormat) return;
+            
+            const editor = document.getElementById('jsonEditor');
+            const editorTabLabel = document.getElementById('editorTabLabel');
+            const jsonBtn = document.getElementById('jsonToggleBtn');
+            const yamlBtn = document.getElementById('yamlToggleBtn');
+            const formatHint = document.getElementById('formatHint');
+            
+            // Try to parse current content before switching
+            if (editor.value.trim()) {
+                try {
+                    const obj = parseEditorContent(editor.value);
+                    
+                    // Switch format
+                    state.displayFormat = format;
+                    
+                    // Re-render in new format
+                    editor.value = toDisplayFormat(obj);
+                    
+                    // Also re-encode originalJson in new format for change detection
+                    if (state.originalJson) {
+                        try {
+                            const origObj = JSON.parse(state.originalJson);
+                            state.originalJsonDisplay = toDisplayFormat(origObj);
+                        } catch (e) {
+                            state.originalJsonDisplay = state.originalJson;
+                        }
+                    }
+                } catch (e) {
+                    showToast(`Cannot switch format: invalid ${state.displayFormat === 'json' ? 'JSON' : 'YAML'} in editor`, 'error');
+                    return;
+                }
+            } else {
+                state.displayFormat = format;
+            }
+            
+            // Update UI
+            jsonBtn.classList.toggle('active', format === 'json');
+            yamlBtn.classList.toggle('active', format === 'yaml');
+            editorTabLabel.textContent = format === 'yaml' ? 'YAML Representation' : 'JSON Representation';
+            formatHint.textContent = format === 'yaml' ? 'commits as JSON' : '';
+        }
         
         // Developer mode (for staging environments)
         let devModeClickCount = 0;
@@ -2327,7 +2479,7 @@ data_models: {}
                     const jsonData = JSON.parse(content);
                     
                     // Use GitHub version
-                    document.getElementById('jsonEditor').value = JSON.stringify(jsonData, null, 2);
+                    setEditorContent(jsonData);
                     state.originalJson = JSON.stringify(jsonData, null, 2);
                     state.githubSha = data.sha;
                     
@@ -2353,7 +2505,7 @@ data_models: {}
             
             try {
                 const editor = document.getElementById('jsonEditor');
-                const currentJson = JSON.parse(editor.value);
+                const currentJson = getEditorAsObject();
                 const fileName = getModelFileName(currentJson);
                 const filePath = state.github.path + fileName;
                 
@@ -2373,7 +2525,7 @@ data_models: {}
                     const jsonData = JSON.parse(content);
                     
                     // Update editor with latest from GitHub
-                    editor.value = JSON.stringify(jsonData, null, 2);
+                    setEditorContent(jsonData);
                     state.originalJson = JSON.stringify(jsonData, null, 2);
                     state.githubSha = data.sha;
                     
@@ -2415,7 +2567,7 @@ data_models: {}
                 
                 // Update editor with Sigma's version
                 state.selectedModel = spec;
-                document.getElementById('jsonEditor').value = JSON.stringify(spec, null, 2);
+                setEditorContent(spec);
                 
                 // Update status to show we have unsaved changes (since this is newer than GitHub)
                 const sigmaVersion = spec.documentVersion || 0;
@@ -2614,12 +2766,12 @@ data_models: {}
                 return;
             }
             
-            // Validate JSON
+            // Validate content
             const editor = document.getElementById('jsonEditor');
             try {
-                JSON.parse(editor.value);
+                parseEditorContent(editor.value);
             } catch (error) {
-                showToast('Invalid JSON - please fix before committing', 'error');
+                showToast(`Invalid ${state.displayFormat.toUpperCase()} - please fix before committing`, 'error');
                 return;
             }
             
@@ -2693,7 +2845,7 @@ data_models: {}
             
             try {
                 const editor = document.getElementById('jsonEditor');
-                const jsonData = JSON.parse(editor.value);
+                const jsonData = getEditorAsObject();
                 
                 const fileName = getModelFileName(jsonData);
                 const filePath = state.github.path + fileName;
@@ -2750,7 +2902,7 @@ data_models: {}
                 
                 const data = await response.json();
                 state.githubSha = data.content.sha;
-                state.originalJson = editor.value;
+                state.originalJson = JSON.stringify(jsonData, null, 2);
                 state.isNewModel = false;
                 
                 showToast('Changes committed successfully!', 'success');
@@ -2780,7 +2932,7 @@ data_models: {}
             
             try {
                 const editor = document.getElementById('jsonEditor');
-                const jsonData = JSON.parse(editor.value);
+                const jsonData = getEditorAsObject();
                 
                 const fileName = getModelFileName(jsonData);
                 const filePath = state.github.path + fileName;
@@ -3752,7 +3904,7 @@ data_models: {}
             
             // Update UI
             document.getElementById('editorTitle').textContent = modelName + ' (New)';
-            document.getElementById('jsonEditor').value = JSON.stringify(template, null, 2);
+            setEditorContent(template);
             
             // Enable buttons
             document.getElementById('formatBtn').disabled = false;
@@ -3854,7 +4006,7 @@ data_models: {}
                 state.originalJson = JSON.stringify(data, null, 2);
                 
                 // Update UI
-                document.getElementById('jsonEditor').value = state.originalJson;
+                setEditorContent(data);
                 document.getElementById('editorTitle').textContent = data.name || 'Untitled Data Model';
                 
                 // Enable buttons
@@ -3892,11 +4044,11 @@ data_models: {}
         function formatJson() {
             const editor = document.getElementById('jsonEditor');
             try {
-                const parsed = JSON.parse(editor.value);
-                editor.value = JSON.stringify(parsed, null, 2);
-                showToast('JSON formatted', 'success');
+                const parsed = parseEditorContent(editor.value);
+                editor.value = toDisplayFormat(parsed);
+                showToast(`${state.displayFormat.toUpperCase()} formatted`, 'success');
             } catch (error) {
-                showToast('Invalid JSON - cannot format', 'error');
+                showToast(`Invalid ${state.displayFormat.toUpperCase()} - cannot format`, 'error');
             }
         }
         
@@ -3904,7 +4056,7 @@ data_models: {}
         function copyJson() {
             const editor = document.getElementById('jsonEditor');
             navigator.clipboard.writeText(editor.value);
-            showToast('JSON copied to clipboard', 'success');
+            showToast(`${state.displayFormat.toUpperCase()} copied to clipboard`, 'success');
         }
         
         // ==================== HISTORY PANEL ====================
@@ -4244,8 +4396,13 @@ data_models: {}
         // Restore version from diff modal
         function restoreVersion() {
             if (state.diffOldContent) {
-                const editor = document.getElementById('jsonEditor');
-                editor.value = state.diffOldContent;
+                // diffOldContent is always JSON from GitHub
+                try {
+                    const obj = JSON.parse(state.diffOldContent);
+                    setEditorContent(obj);
+                } catch (e) {
+                    document.getElementById('jsonEditor').value = state.diffOldContent;
+                }
                 
                 // CRITICAL FIX: Update originalJson so commit detection works
                 state.originalJson = state.diffOldContent;
@@ -4282,9 +4439,13 @@ data_models: {}
                 const data = await response.json();
                 const content = decodeURIComponent(escape(atob(data.content)));
                 
-                // Update editor
-                const editor = document.getElementById('jsonEditor');
-                editor.value = content;
+                // Update editor - content is JSON from GitHub, convert to display format
+                try {
+                    const obj = JSON.parse(content);
+                    setEditorContent(obj);
+                } catch (e) {
+                    document.getElementById('jsonEditor').value = content;
+                }
                 
                 // CRITICAL FIX: Update originalJson so changes are detected
                 state.originalJson = content;
