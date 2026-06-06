@@ -1543,22 +1543,22 @@
                     <button class="btn btn-secondary asset-tab active" id="assetTabDataModels" onclick="setAssetType('dataModels')" style="flex: 1; padding: 6px; font-size: 12px;">Data Models</button>
                     <button class="btn btn-secondary asset-tab" id="assetTabWorkbooks" onclick="setAssetType('workbooks')" style="flex: 1; padding: 6px; font-size: 12px;">Workbooks</button>
                 </div>
-                <div class="models-header">
+                <div class="models-header" style="flex-direction: column; align-items: stretch; gap: 8px;">
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <span class="section-title" id="assetSectionTitle" style="margin: 0;">Data Models</span>
                         <span id="modelsCount" style="font-size: 11px; color: var(--text-muted);"></span>
                     </div>
-                    <div style="display: flex; gap: 6px;">
-                        <button class="btn btn-secondary" onclick="newDataModel()" style="padding: 6px 12px; font-size: 12px;" id="newModelBtn" disabled>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="newDataModel()" style="padding: 5px 10px; font-size: 12px; white-space: nowrap;" id="newModelBtn" disabled>
                             + New
                         </button>
-                        <button class="btn btn-secondary" onclick="openFolderPullModal()" style="padding: 6px 12px; font-size: 12px; display: none;" id="pullFolderBtn" disabled title="Pull every workbook spec in a Sigma folder into the repo">
-                            ⬇ Pull Folder
+                        <button class="btn btn-secondary" onclick="openFolderPullModal()" style="padding: 5px 10px; font-size: 12px; white-space: nowrap; display: none;" id="pullFolderBtn" disabled title="Pull every workbook spec in a Sigma folder into the repo">
+                            ⬇ Folder
                         </button>
-                        <button class="btn btn-secondary" onclick="adoptWorkbookPrompt()" style="padding: 6px 12px; font-size: 12px; display: none;" id="adoptWorkbookBtn" disabled title="Bring a single spec-created workbook under management by its ID">
+                        <button class="btn btn-secondary" onclick="adoptWorkbookPrompt()" style="padding: 5px 10px; font-size: 12px; white-space: nowrap; display: none;" id="adoptWorkbookBtn" disabled title="Bring a single spec-created workbook under management by its ID">
                             + Adopt
                         </button>
-                        <button class="btn btn-secondary" onclick="refreshCurrentList()" style="padding: 6px 12px; font-size: 12px;" id="refreshBtn" disabled>
+                        <button class="btn btn-secondary" onclick="refreshCurrentList()" style="padding: 5px 10px; font-size: 12px; white-space: nowrap;" id="refreshBtn" disabled>
                             ↻ Refresh
                         </button>
                     </div>
