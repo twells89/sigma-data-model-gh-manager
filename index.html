@@ -1514,7 +1514,12 @@
                     <label for="ghPath">Data Models Path</label>
                     <input type="text" id="ghPath" placeholder="data-models/" value="data-models/">
                 </div>
-                
+
+                <div class="form-group">
+                    <label for="ghWorkbookPath">Workbooks Path</label>
+                    <input type="text" id="ghWorkbookPath" placeholder="workbooks/" value="workbooks/">
+                </div>
+
                 <button class="btn btn-secondary" id="ghConnectBtn" onclick="connectGitHub()" style="width: 100%;">
                     <span>Connect to GitHub</span>
                 </button>
@@ -2263,7 +2268,8 @@ TIPS:
                 token: document.getElementById('ghToken').value,
                 repo: document.getElementById('ghRepo').value,
                 branch: document.getElementById('ghBranch').value,
-                path: document.getElementById('ghPath').value
+                path: document.getElementById('ghPath').value,
+                workbookPath: document.getElementById('ghWorkbookPath').value
             };
             
             localStorage.setItem(STORAGE_KEYS.sigma, JSON.stringify(sigmaData));
@@ -2289,6 +2295,7 @@ TIPS:
                     document.getElementById('ghRepo').value = githubData.repo || '';
                     document.getElementById('ghBranch').value = githubData.branch || 'main';
                     document.getElementById('ghPath').value = githubData.path || 'data-models/';
+                    document.getElementById('ghWorkbookPath').value = githubData.workbookPath || 'workbooks/';
                 }
                 
                 return { sigmaData, githubData };
@@ -2308,6 +2315,7 @@ TIPS:
             document.getElementById('ghRepo').value = '';
             document.getElementById('ghBranch').value = 'main';
             document.getElementById('ghPath').value = 'data-models/';
+            document.getElementById('ghWorkbookPath').value = 'workbooks/';
             showToast('Saved credentials cleared', 'success');
         }
         
@@ -2338,7 +2346,8 @@ TIPS:
             const repo = document.getElementById('ghRepo').value.trim();
             const branch = document.getElementById('ghBranch').value.trim() || 'main';
             const path = document.getElementById('ghPath').value.trim() || 'data-models/';
-            
+            const wbPath = document.getElementById('ghWorkbookPath').value.trim() || 'workbooks/';
+
             if (!token || !repo) {
                 showToast('Please enter GitHub token and repository', 'error');
                 return;
@@ -2365,13 +2374,14 @@ TIPS:
                 const repoData = await response.json();
                 
                 const dmPath = path.endsWith('/') ? path : path + '/';
+                const workbookPath = wbPath.endsWith('/') ? wbPath : wbPath + '/';
                 state.github = {
                     token,
                     repo,
                     branch,
-                    path: state.assetType === 'workbooks' ? 'workbooks/' : dmPath,
+                    path: state.assetType === 'workbooks' ? workbookPath : dmPath,
                     dataModelPath: dmPath,
-                    workbookPath: 'workbooks/',
+                    workbookPath: workbookPath,
                     connected: true,
                     branches: [],
                     currentBranch: branch
@@ -3559,6 +3569,16 @@ data_models: {}
             state.github.path = type === 'workbooks'
                 ? (state.github.workbookPath || 'workbooks/')
                 : (state.github.dataModelPath || 'data-models/');
+
+            // Visually highlight which path field is active for the current asset.
+            const dmInput = document.getElementById('ghPath');
+            const wbInput = document.getElementById('ghWorkbookPath');
+            if (dmInput && wbInput) {
+                const active = 'var(--accent)';
+                const idle = 'var(--border)';
+                dmInput.style.borderColor = type === 'dataModels' ? active : idle;
+                wbInput.style.borderColor = type === 'workbooks' ? active : idle;
+            }
 
             if (type === 'workbooks') {
                 loadWorkbooks();
