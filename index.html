@@ -1912,7 +1912,7 @@ TIPS:
             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                 <div class="setup-section">
                     <h3>Overview</h3>
-                    <p>Sigma GitOps lets you manage Sigma <strong>data models and workbooks</strong> as code using GitHub for version control. <strong>Sigma is always the source of truth</strong> - this tool helps you track changes, review via PRs, and maintain history.</p>
+                    <p>Sigma GitOps lets you manage Sigma <strong>data models and workbooks</strong> as code in GitHub. <strong>Sigma is always the source of truth.</strong> This tool tracks changes, reviews them in PRs, and keeps history. Workbooks as code is in a limited private beta (see Managing Workbooks below).</p>
                     <p>When changes are merged to your main branch, they automatically sync to Sigma via GitHub Actions.</p>
                 </div>
                 
@@ -2011,14 +2011,15 @@ TIPS:
 
                 <div class="setup-section">
                     <h3>📒 Managing Workbooks</h3>
-                    <p>Switch the sidebar to the <strong>Workbooks</strong> tab to manage workbooks as code, alongside data models. Workbook files live in the <strong>Workbooks Path</strong> (<code>workbooks/</code>) — set independently of the Data Models Path.</p>
+                    <p class="setup-warning">🧪 Workbooks as code is in a <strong>limited private beta</strong>. The workbook spec API doesn't cover everything yet. To get added to the access list, reach out to your CSM with your use case.</p>
+                    <p>Switch the sidebar to the <strong>Workbooks</strong> tab to manage workbooks as code, next to data models. Workbook files live in the <strong>Workbooks Path</strong> (<code>workbooks/</code>). You set it independently of the Data Models Path.</p>
                     <ul>
-                        <li><strong>⬇ Folder</strong> — pick a Sigma folder and pull <em>every</em> workbook spec in it into <code>workbooks/</code>. Folder selection is the trust boundary: point it only at folders built through the spec.</li>
-                        <li><strong>+ Adopt</strong> — bring a single workbook under management by its ID.</li>
-                        <li>Edit a workbook's spec and commit it just like a data model; the sync workflow writes it back to Sigma.</li>
+                        <li><strong>⬇ Folder</strong>. Pick a Sigma folder and pull every workbook spec in it into <code>workbooks/</code>. Folder choice is the trust boundary. Point it only at folders you built through the spec.</li>
+                        <li><strong>+ Adopt</strong>. Bring a single workbook under management by its ID.</li>
+                        <li>Edit a workbook's spec and commit it just like a data model. The sync workflow writes it back to Sigma.</li>
                     </ul>
-                    <p class="setup-warning">⚠️ Workbook spec coverage isn't 100%. On sync, a <strong>round-trip guard</strong> blocks any push that would drop pages, elements, or fields present in the live workbook — so an incomplete spec can't silently destroy a dashboard. (Override intentionally with <code>ALLOW_WORKBOOK_REMOVALS=true</code>.)</p>
-                    <p>Enable it in <code>config.yml</code> with <code>manage_workbooks: true</code> and list your <code>workbook_folders</code>.</p>
+                    <p class="setup-warning">⚠️ Workbook spec coverage isn't complete. On sync, a <strong>round-trip guard</strong> blocks any push that would drop pages, elements, or fields present in the live workbook. An incomplete spec can't quietly break a dashboard. Override on purpose with <code>ALLOW_WORKBOOK_REMOVALS=true</code>.</p>
+                    <p>Turn it on in <code>config.yml</code>. Set <code>manage_workbooks: true</code> and list your <code>workbook_folders</code>.</p>
                 </div>
 
                 <div class="setup-section">
