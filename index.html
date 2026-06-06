@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sigma Data Model Manager</title>
+    <title>Sigma GitOps</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
         
@@ -650,7 +650,13 @@
             border-color: var(--accent);
             color: white;
         }
-        
+
+        .asset-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
         /* Setup Guide Styles */
         .setup-section {
             margin-bottom: 24px;
@@ -1423,9 +1429,9 @@
             <div class="sidebar-header">
                 <div class="logo">
                     <div class="logo-icon" id="logoIcon" style="cursor: pointer;" title="Click 5 times to enable developer mode">Σ</div>
-                    <span class="logo-text">Data Model Manager</span>
+                    <span class="logo-text">Sigma GitOps</span>
                 </div>
-                <div class="logo-subtitle">Code-based Data Models <span class="badge beta">Beta</span><span class="badge" id="devModeBadge" style="display: none; margin-left: 8px; background: rgba(255, 123, 114, 0.15); color: #ff7b72;">DEV</span></div>
+                <div class="logo-subtitle">Data models &amp; workbooks as code <span class="badge beta">Beta</span><span class="badge" id="devModeBadge" style="display: none; margin-left: 8px; background: rgba(255, 123, 114, 0.15); color: #ff7b72;">DEV</span></div>
             </div>
             
             <div class="credentials-section">
@@ -1528,25 +1534,32 @@
             </div>
             
             <div class="models-section">
+                <div style="display: flex; gap: 6px; padding: 8px 12px 0;">
+                    <button class="btn btn-secondary asset-tab active" id="assetTabDataModels" onclick="setAssetType('dataModels')" style="flex: 1; padding: 6px; font-size: 12px;">Data Models</button>
+                    <button class="btn btn-secondary asset-tab" id="assetTabWorkbooks" onclick="setAssetType('workbooks')" style="flex: 1; padding: 6px; font-size: 12px;">Workbooks</button>
+                </div>
                 <div class="models-header">
                     <div style="display: flex; align-items: center; gap: 6px;">
-                        <span class="section-title" style="margin: 0;">Data Models</span>
+                        <span class="section-title" id="assetSectionTitle" style="margin: 0;">Data Models</span>
                         <span id="modelsCount" style="font-size: 11px; color: var(--text-muted);"></span>
                     </div>
                     <div style="display: flex; gap: 6px;">
                         <button class="btn btn-secondary" onclick="newDataModel()" style="padding: 6px 12px; font-size: 12px;" id="newModelBtn" disabled>
                             + New
                         </button>
-                        <button class="btn btn-secondary" onclick="refreshModels()" style="padding: 6px 12px; font-size: 12px;" id="refreshBtn" disabled>
+                        <button class="btn btn-secondary" onclick="adoptWorkbookPrompt()" style="padding: 6px 12px; font-size: 12px; display: none;" id="adoptWorkbookBtn" disabled title="Bring a spec-created workbook under management by its ID">
+                            + Adopt
+                        </button>
+                        <button class="btn btn-secondary" onclick="refreshCurrentList()" style="padding: 6px 12px; font-size: 12px;" id="refreshBtn" disabled>
                             ↻ Refresh
                         </button>
                     </div>
                 </div>
                 <div style="padding: 8px 12px; border-bottom: 1px solid var(--border);">
-                    <input type="text" 
-                           id="modelsSearch" 
-                           placeholder="Search models..." 
-                           oninput="filterModels(this.value)"
+                    <input type="text"
+                           id="modelsSearch"
+                           placeholder="Search models..."
+                           oninput="filterCurrentList(this.value)"
                            style="width: 100%; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 12px;">
                 </div>
                 <div class="models-list" id="modelsList">
@@ -2019,8 +2032,11 @@ TIPS:
             tokenExpiry: null,
             dataModels: [],
             filteredModels: [],
+            assetType: 'dataModels', // 'dataModels' or 'workbooks' — which asset the sidebar manages
+            workbooks: [],          // tracked (spec-created) workbooks, sourced from the repo's workbooks/ dir
+            filteredWorkbooks: [],
             selectedModel: null,
-            selectedModelMeta: null, // Stores the list metadata (includes inodeId)
+            selectedModelMeta: null, // Stores the list metadata (includes inodeId / workbookId)
             originalJson: null,
             githubSha: null, // SHA of the file in GitHub (for updates)
             isNewModel: false, // True when creating a new data model
@@ -2031,7 +2047,9 @@ TIPS:
                 token: null,
                 repo: null,
                 branch: 'main',
-                path: 'data-models/',
+                path: 'data-models/',       // active commit/load path (swaps with assetType)
+                dataModelPath: 'data-models/', // remembered data-model dir (from the configured path)
+                workbookPath: 'workbooks/',  // fixed dir for spec-created workbooks
                 connected: false,
                 branches: [],
                 currentBranch: 'main'
@@ -2316,11 +2334,14 @@ TIPS:
                 
                 const repoData = await response.json();
                 
+                const dmPath = path.endsWith('/') ? path : path + '/';
                 state.github = {
                     token,
                     repo,
                     branch,
-                    path: path.endsWith('/') ? path : path + '/',
+                    path: state.assetType === 'workbooks' ? 'workbooks/' : dmPath,
+                    dataModelPath: dmPath,
+                    workbookPath: 'workbooks/',
                     connected: true,
                     branches: [],
                     currentBranch: branch
@@ -2379,10 +2400,14 @@ TIPS:
                 }
                 
                 const configYaml = `# Sigma Computing Configuration
-# This file is automatically managed by the Data Model Manager app
+# This file is automatically managed by the Sigma GitOps app
 
 # API URL for your Sigma instance
 sigma_api_url: ${state.baseUrl}
+
+# Workbooks as code (optional) — only spec-created workbooks are managed.
+manage_workbooks: false
+workbooks: {}
 
 # Data model mappings (managed by scripts)
 data_models: {}
@@ -2452,8 +2477,8 @@ data_models: {}
         
         // Get filename for a data model
         function getModelFileName(model) {
-            // Use a sanitized name or the dataModelId
-            const name = model.name || model.dataModelId;
+            // Use a sanitized name, or fall back to the asset's ID
+            const name = model.name || model.workbookId || model.dataModelId;
             return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.json';
         }
         
@@ -2548,17 +2573,29 @@ data_models: {}
             const btn = document.getElementById('sigmaRefreshBtn');
             btn.disabled = true;
             btn.innerHTML = '<div class="spinner"></div>';
-            
+
             try {
-                const dataModelId = state.selectedModelMeta.dataModelId;
-                
+                // Workbooks and data models use different spec endpoints.
+                let specUrl;
+                if (state.assetType === 'workbooks') {
+                    const workbookId = state.selectedModelMeta.workbookId;
+                    if (!workbookId) {
+                        throw new Error('This workbook has no Sigma ID yet — commit it first to create it in Sigma');
+                    }
+                    specUrl = `${state.baseUrl}/v2/workbooks/${workbookId}/spec`;
+                } else {
+                    const dataModelId = state.selectedModelMeta.dataModelId;
+                    specUrl = `${state.baseUrl}/v3alpha/datamodels/${dataModelId}/spec`;
+                }
+
                 // Fetch latest spec from Sigma
-                const response = await fetch(`${state.baseUrl}/v3alpha/datamodels/${dataModelId}/spec`, {
+                const response = await fetch(specUrl, {
                     headers: {
-                        'Authorization': `Bearer ${state.accessToken}`
+                        'Authorization': `Bearer ${state.accessToken}`,
+                        'Accept': 'application/json'
                     }
                 });
-                
+
                 if (!response.ok) {
                     throw new Error('Failed to fetch from Sigma');
                 }
@@ -3352,7 +3389,10 @@ data_models: {}
                 
                 // Enable buttons
                 document.getElementById('refreshBtn').disabled = false;
-                
+                if (state.assetType === 'workbooks') {
+                    document.getElementById('adoptWorkbookBtn').disabled = false;
+                }
+
                 // Load data models
                 await loadDataModels();
                 
@@ -3458,7 +3498,240 @@ data_models: {}
             await loadDataModels();
             showToast('Data models refreshed', 'success');
         }
-        
+
+        // ==================== ASSET TYPE (DATA MODELS / WORKBOOKS) ====================
+
+        // Switch the sidebar between data models and workbooks.
+        function setAssetType(type) {
+            if (type !== 'dataModels' && type !== 'workbooks') return;
+            state.assetType = type;
+
+            document.getElementById('assetTabDataModels').classList.toggle('active', type === 'dataModels');
+            document.getElementById('assetTabWorkbooks').classList.toggle('active', type === 'workbooks');
+            document.getElementById('assetSectionTitle').textContent = type === 'workbooks' ? 'Workbooks' : 'Data Models';
+
+            const search = document.getElementById('modelsSearch');
+            search.value = '';
+            search.placeholder = type === 'workbooks' ? 'Search workbooks...' : 'Search models...';
+
+            const newBtn = document.getElementById('newModelBtn');
+            const adoptBtn = document.getElementById('adoptWorkbookBtn');
+            newBtn.style.display = type === 'workbooks' ? 'none' : '';
+            adoptBtn.style.display = type === 'workbooks' ? '' : 'none';
+            adoptBtn.disabled = !state.accessToken;
+
+            // Swap the active commit/load path so commits route to the right dir.
+            state.github.path = type === 'workbooks'
+                ? (state.github.workbookPath || 'workbooks/')
+                : (state.github.dataModelPath || 'data-models/');
+
+            if (type === 'workbooks') {
+                loadWorkbooks();
+            } else {
+                renderModelsList();
+                updateStatus('connected', state.dataModels.length ? `Connected • ${state.dataModels.length} data models` : 'Connected');
+            }
+        }
+
+        // Dispatchers used by the shared search box / refresh button.
+        function filterCurrentList(query) {
+            if (state.assetType === 'workbooks') filterWorkbooks(query);
+            else filterModels(query);
+        }
+        async function refreshCurrentList() {
+            if (state.assetType === 'workbooks') {
+                await loadWorkbooks();
+                showToast('Workbooks refreshed', 'success');
+            } else {
+                await refreshModels();
+            }
+        }
+
+        // ==================== WORKBOOKS AS CODE ====================
+        // The repo's workbooks/ directory IS the managed set — every file there was
+        // created through the spec (POST /v2/workbooks/spec) by the sync workflow.
+        // We never scrape the org's full workbook list; new ones are brought in
+        // explicitly via "Adopt" (by ID).
+
+        async function loadWorkbooks() {
+            if (!state.github.connected) {
+                state.workbooks = [];
+                state.filteredWorkbooks = [];
+                renderWorkbooksList();
+                updateStatus('connected', 'Connect GitHub to manage workbooks as code');
+                return;
+            }
+
+            updateStatus('loading', 'Loading workbooks from repo...');
+            try {
+                const dir = state.github.workbookPath || 'workbooks/';
+                const resp = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/contents/${dir}?ref=${state.github.currentBranch}`,
+                    { headers: { 'Authorization': `Bearer ${state.github.token}`, 'Accept': 'application/vnd.github.v3+json' } }
+                );
+
+                let files = [];
+                if (resp.ok) {
+                    const listing = await resp.json();
+                    files = (Array.isArray(listing) ? listing : []).filter(
+                        f => f.type === 'file' && f.name.endsWith('.json') && f.name !== '_template.json'
+                    );
+                } else if (resp.status !== 404) {
+                    throw new Error('Failed to list workbooks');
+                }
+
+                const wbs = [];
+                for (const f of files) {
+                    try {
+                        const fr = await fetch(f.url, { headers: { 'Authorization': `Bearer ${state.github.token}`, 'Accept': 'application/vnd.github.v3+json' } });
+                        const fd = await fr.json();
+                        const spec = JSON.parse(decodeURIComponent(escape(atob(fd.content))));
+                        wbs.push({ name: spec.name || f.name.replace('.json', ''), file: f.name, workbookId: spec.workbookId || null, updatedAt: spec.updatedAt || null });
+                    } catch (e) {
+                        wbs.push({ name: f.name.replace('.json', ''), file: f.name, workbookId: null });
+                    }
+                }
+
+                wbs.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                state.workbooks = wbs;
+                state.filteredWorkbooks = wbs;
+                renderWorkbooksList();
+                updateStatus('connected', `Connected • ${wbs.length} workbook${wbs.length === 1 ? '' : 's'} as code`);
+            } catch (error) {
+                console.error('Load workbooks error:', error);
+                updateStatus('error', 'Failed to load workbooks');
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function filterWorkbooks(query) {
+            const term = query.toLowerCase().trim();
+            state.filteredWorkbooks = !term
+                ? state.workbooks
+                : state.workbooks.filter(w => (w.name || '').toLowerCase().includes(term));
+            renderWorkbooksList();
+        }
+
+        function renderWorkbooksList() {
+            const container = document.getElementById('modelsList');
+            const wbs = state.filteredWorkbooks || state.workbooks || [];
+            const totalCount = state.workbooks?.length || 0;
+
+            const countDisplay = document.getElementById('modelsCount');
+            if (countDisplay) {
+                countDisplay.textContent = wbs.length !== totalCount ? `(${wbs.length}/${totalCount})` : `(${totalCount})`;
+            }
+
+            if (wbs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <div class="empty-state-icon">📒</div>
+                        <p>${state.github.connected ? 'No spec-created workbooks yet' : 'Connect GitHub to manage workbooks as code'}</p>
+                        ${state.github.connected ? '<p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Use <strong>+ Adopt</strong> to bring a spec-created workbook under management by its ID.</p>' : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = wbs.map((wb, i) => `
+                <div class="model-item ${state.selectedModelMeta?.workbookId && state.selectedModelMeta.workbookId === wb.workbookId ? 'active' : ''}"
+                     onclick="selectWorkbook(${i})">
+                    <div class="model-name">${escapeHtml(wb.name || 'Untitled')}</div>
+                    <div class="model-meta">
+                        <span>${wb.workbookId ? 'Updated: ' + formatDate(wb.updatedAt) : 'Not yet synced'}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Select a tracked workbook (loads the committed spec from GitHub).
+        async function selectWorkbook(index) {
+            const wb = state.workbooks[index];
+            if (!wb) return;
+
+            updateStatus('loading', 'Loading workbook...');
+            state.isNewModel = false;
+            state.assetType = 'workbooks';
+
+            try {
+                const filePath = (state.github.workbookPath || 'workbooks/') + wb.file;
+                const resp = await fetch(
+                    `https://api.github.com/repos/${state.github.repo}/contents/${filePath}?ref=${state.github.currentBranch}`,
+                    { headers: { 'Authorization': `Bearer ${state.github.token}`, 'Accept': 'application/vnd.github.v3+json' } }
+                );
+                if (!resp.ok) throw new Error('Failed to load workbook file from GitHub');
+
+                const fd = await resp.json();
+                const spec = JSON.parse(decodeURIComponent(escape(atob(fd.content))));
+
+                state.selectedModel = spec;
+                state.originalJson = JSON.stringify(spec, null, 2);
+                state.githubSha = fd.sha;
+                state.selectedModelMeta = { workbookId: spec.workbookId || wb.workbookId || null, name: spec.name, file: wb.file };
+
+                setEditorContent(spec);
+                document.getElementById('editorTitle').textContent = spec.name || 'Untitled Workbook';
+                document.getElementById('formatBtn').disabled = false;
+                document.getElementById('copyBtn').disabled = false;
+                document.getElementById('sigmaRefreshBtn').disabled = !state.selectedModelMeta.workbookId;
+
+                if (state.github.connected) {
+                    document.getElementById('commitBtn').disabled = false;
+                    loadCommitHistory();
+                    updatePRButtonVisibility();
+                }
+
+                renderWorkbooksList();
+                updateStatus('connected', `Editing: ${spec.name || 'Untitled'}`);
+            } catch (error) {
+                console.error('Select workbook error:', error);
+                updateStatus('error', 'Failed to load workbook');
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Adopt a spec-created workbook by ID: pull its spec from Sigma into the
+        // editor so it can be committed into workbooks/ (no full-org scraping).
+        async function adoptWorkbookPrompt() {
+            if (!state.accessToken) { showToast('Connect to Sigma first', 'error'); return; }
+            const id = prompt('Enter the Sigma workbook ID to adopt.\n\nThis must be a workbook created through the spec — UI-built workbooks may use features (trellis, tooltip, …) that do not round-trip.');
+            if (!id) return;
+            await adoptWorkbookById(id.trim());
+        }
+
+        async function adoptWorkbookById(workbookId) {
+            updateStatus('loading', 'Fetching workbook spec from Sigma...');
+            try {
+                const resp = await fetch(`${state.baseUrl}/v2/workbooks/${workbookId}/spec`, {
+                    headers: { 'Authorization': `Bearer ${state.accessToken}`, 'Accept': 'application/json' }
+                });
+                if (!resp.ok) throw new Error('Failed to fetch workbook spec (check the ID)');
+                const spec = await resp.json();
+
+                state.assetType = 'workbooks';
+                state.isNewModel = false;
+                state.selectedModel = spec;
+                state.originalJson = JSON.stringify(spec, null, 2);
+                state.githubSha = null; // not in GitHub yet
+                state.github.path = state.github.workbookPath || 'workbooks/';
+                state.selectedModelMeta = { workbookId: spec.workbookId || workbookId, name: spec.name };
+
+                setEditorContent(spec);
+                document.getElementById('editorTitle').textContent = spec.name || 'Untitled Workbook';
+                document.getElementById('formatBtn').disabled = false;
+                document.getElementById('copyBtn').disabled = false;
+                document.getElementById('sigmaRefreshBtn').disabled = false;
+                if (state.github.connected) document.getElementById('commitBtn').disabled = false;
+
+                showToast('Workbook loaded from Sigma. Commit to bring it under management in workbooks/.', 'success');
+                updateStatus('connected', `Adopting: ${spec.name || 'Untitled'} — commit to save`);
+            } catch (error) {
+                console.error('Adopt workbook error:', error);
+                updateStatus('error', 'Failed to adopt workbook');
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+
         // Create a new data model
         // Track wizard state
         let wizardState = {
@@ -3981,9 +4254,10 @@ data_models: {}
         // Select a model
         async function selectModel(dataModelId) {
             updateStatus('loading', 'Loading data model...');
-            
+
             // Clear new model flag since we're selecting an existing one
             state.isNewModel = false;
+            state.assetType = 'dataModels';
             
             // Store the model metadata from the list (may include inodeId)
             state.selectedModelMeta = state.dataModels.find(m => m.dataModelId === dataModelId);
