@@ -1547,7 +1547,10 @@
                         <button class="btn btn-secondary" onclick="newDataModel()" style="padding: 6px 12px; font-size: 12px;" id="newModelBtn" disabled>
                             + New
                         </button>
-                        <button class="btn btn-secondary" onclick="adoptWorkbookPrompt()" style="padding: 6px 12px; font-size: 12px; display: none;" id="adoptWorkbookBtn" disabled title="Bring a spec-created workbook under management by its ID">
+                        <button class="btn btn-secondary" onclick="openFolderPullModal()" style="padding: 6px 12px; font-size: 12px; display: none;" id="pullFolderBtn" disabled title="Pull every workbook spec in a Sigma folder into the repo">
+                            ⬇ Pull Folder
+                        </button>
+                        <button class="btn btn-secondary" onclick="adoptWorkbookPrompt()" style="padding: 6px 12px; font-size: 12px; display: none;" id="adoptWorkbookBtn" disabled title="Bring a single spec-created workbook under management by its ID">
                             + Adopt
                         </button>
                         <button class="btn btn-secondary" onclick="refreshCurrentList()" style="padding: 6px 12px; font-size: 12px;" id="refreshBtn" disabled>
@@ -1744,7 +1747,34 @@ TIPS:
             </div>
         </div>
     </div>
-    
+
+    <div class="modal-overlay" id="folderPullModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">⬇ Pull Workbooks from a Folder</div>
+                <button class="modal-close" onclick="closeFolderPullModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+                    Pulls every workbook spec in the selected folder (and its subfolders) into
+                    <code>workbooks/</code> and commits them. Folder selection is the trust boundary —
+                    pick folders you know are built through the spec.
+                </p>
+                <div class="form-group">
+                    <label class="form-label">Folder</label>
+                    <select class="form-input" id="folderPullSelect">
+                        <option value="">Loading folders…</option>
+                    </select>
+                </div>
+                <div id="folderPullStatus" style="font-size: 12px; color: var(--text-muted); margin-top: 8px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeFolderPullModal()">Cancel</button>
+                <button class="btn btn-primary" id="folderPullBtn" onclick="pullWorkbooksFromFolder()">Pull &amp; Commit</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Commit Modal -->
     <div class="modal-overlay" id="commitModal">
         <div class="modal">
@@ -2369,8 +2399,9 @@ TIPS:
                 if (state.accessToken) {
                     document.getElementById('ghExportAllBtn').disabled = false;
                     document.getElementById('newModelBtn').disabled = false;
+                    document.getElementById('pullFolderBtn').disabled = false;
                 }
-                
+
                 // Enable commit button if a model is selected
                 if (state.selectedModel) {
                     document.getElementById('commitBtn').disabled = false;
@@ -3391,6 +3422,7 @@ data_models: {}
                 document.getElementById('refreshBtn').disabled = false;
                 if (state.assetType === 'workbooks') {
                     document.getElementById('adoptWorkbookBtn').disabled = false;
+                    document.getElementById('pullFolderBtn').disabled = !state.github.connected;
                 }
 
                 // Load data models
@@ -3516,9 +3548,12 @@ data_models: {}
 
             const newBtn = document.getElementById('newModelBtn');
             const adoptBtn = document.getElementById('adoptWorkbookBtn');
+            const pullFolderBtn = document.getElementById('pullFolderBtn');
             newBtn.style.display = type === 'workbooks' ? 'none' : '';
             adoptBtn.style.display = type === 'workbooks' ? '' : 'none';
+            pullFolderBtn.style.display = type === 'workbooks' ? '' : 'none';
             adoptBtn.disabled = !state.accessToken;
+            pullFolderBtn.disabled = !(state.accessToken && state.github.connected);
 
             // Swap the active commit/load path so commits route to the right dir.
             state.github.path = type === 'workbooks'
@@ -3730,6 +3765,129 @@ data_models: {}
                 updateStatus('error', 'Failed to adopt workbook');
                 showToast(`Error: ${error.message}`, 'error');
             }
+        }
+
+        // ---- Folder pull: bulk-import every workbook spec in a Sigma folder ----
+
+        // Fetch every workbook in the org (paginated), for folder enumeration.
+        async function fetchAllWorkbooks() {
+            let all = [], page = null;
+            while (true) {
+                const url = new URL(`${state.baseUrl}/v2/workbooks`);
+                url.searchParams.set('limit', '200');
+                if (page) url.searchParams.set('page', page);
+                const r = await fetch(url, { headers: { 'Authorization': `Bearer ${state.accessToken}` } });
+                if (!r.ok) throw new Error('Failed to list workbooks');
+                const d = await r.json();
+                all = all.concat(d.entries || []);
+                page = d.nextPage;
+                if (!page) break;
+            }
+            return all;
+        }
+
+        async function openFolderPullModal() {
+            if (!state.accessToken) { showToast('Connect to Sigma first', 'error'); return; }
+            if (!state.github.connected) { showToast('Connect GitHub first', 'error'); return; }
+
+            const select = document.getElementById('folderPullSelect');
+            select.innerHTML = '<option value="">Loading folders…</option>';
+            document.getElementById('folderPullStatus').textContent = '';
+            document.getElementById('folderPullModal').classList.add('active');
+
+            try {
+                state._allWorkbooks = await fetchAllWorkbooks();
+                // distinct folder paths with counts
+                const counts = {};
+                for (const w of state._allWorkbooks) {
+                    const p = w.path || '(no folder)';
+                    counts[p] = (counts[p] || 0) + 1;
+                }
+                const paths = Object.keys(counts).sort((a, b) => a.localeCompare(b));
+                select.innerHTML = paths.map(p =>
+                    `<option value="${escapeHtml(p)}">${escapeHtml(p)} (${counts[p]})</option>`
+                ).join('');
+            } catch (e) {
+                console.error(e);
+                select.innerHTML = '<option value="">Failed to load folders</option>';
+                showToast(`Error: ${e.message}`, 'error');
+            }
+        }
+
+        function closeFolderPullModal() {
+            document.getElementById('folderPullModal').classList.remove('active');
+        }
+
+        // Folder selection is the trust boundary: pull every workbook whose path
+        // matches the chosen prefix, then commit each spec into workbooks/.
+        async function pullWorkbooksFromFolder() {
+            const folder = document.getElementById('folderPullSelect').value;
+            if (!folder) { showToast('Pick a folder first', 'error'); return; }
+
+            const matches = (state._allWorkbooks || []).filter(w => {
+                const p = (w.path || '').replace(/\/$/, '');
+                const f = folder.replace(/\/$/, '');
+                return p === f || p.startsWith(f + '/');
+            });
+            if (!matches.length) { showToast('No workbooks in that folder', 'warning'); return; }
+
+            const btn = document.getElementById('folderPullBtn');
+            btn.disabled = true;
+            const status = document.getElementById('folderPullStatus');
+
+            const used = new Set((state.workbooks || []).map(w => w.file));
+            let ok = 0, fail = 0;
+            for (let i = 0; i < matches.length; i++) {
+                const w = matches[i];
+                status.textContent = `Pulling ${i + 1}/${matches.length}: ${w.name || w.workbookId}…`;
+                try {
+                    const r = await fetch(`${state.baseUrl}/v2/workbooks/${w.workbookId}/spec`, {
+                        headers: { 'Authorization': `Bearer ${state.accessToken}`, 'Accept': 'application/json' }
+                    });
+                    if (!r.ok) throw new Error(`spec ${r.status}`);
+                    const spec = await r.json();
+
+                    // collision-safe filename
+                    let fileName = getModelFileName(spec);
+                    if (used.has(fileName)) {
+                        const id = (spec.workbookId || w.workbookId || '').slice(0, 8);
+                        fileName = fileName.replace(/\.json$/, '') + '-' + id + '.json';
+                    }
+                    used.add(fileName);
+
+                    await commitWorkbookFile(fileName, spec);
+                    ok++;
+                } catch (e) {
+                    console.error('Pull/commit failed for', w.name, e);
+                    fail++;
+                }
+            }
+
+            btn.disabled = false;
+            closeFolderPullModal();
+            showToast(`Committed ${ok} workbook${ok === 1 ? '' : 's'}${fail ? `, ${fail} failed` : ''} to workbooks/`, fail ? 'warning' : 'success');
+            await loadWorkbooks();
+        }
+
+        // Commit a single workbook spec into workbooks/ on the current branch.
+        async function commitWorkbookFile(fileName, spec) {
+            const filePath = (state.github.workbookPath || 'workbooks/') + fileName;
+            const apiBase = `https://api.github.com/repos/${state.github.repo}/contents/${filePath}`;
+            const ghHeaders = { 'Authorization': `Bearer ${state.github.token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+
+            let sha = null;
+            const existing = await fetch(`${apiBase}?ref=${state.github.currentBranch}`, { headers: ghHeaders });
+            if (existing.ok) sha = (await existing.json()).sha;
+
+            const body = {
+                message: `workbooks: pull '${spec.name || fileName}' from Sigma`,
+                content: btoa(unescape(encodeURIComponent(JSON.stringify(spec, null, 2)))),
+                branch: state.github.currentBranch
+            };
+            if (sha) body.sha = sha;
+
+            const resp = await fetch(apiBase, { method: 'PUT', headers: ghHeaders, body: JSON.stringify(body) });
+            if (!resp.ok) throw new Error(`commit failed (${resp.status})`);
         }
 
         // Create a new data model
