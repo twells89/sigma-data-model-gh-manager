@@ -1,38 +1,40 @@
-# Update: Workbooks as Code + Sigma GitOps
+# Update: Workbooks as Code in Sigma GitOps
 
-> Follow-up to [Programmatic Data Model Management: Open-Source Tools](https://community.sigmacomputing.com/t/programmatic-data-model-management-open-source-tools/6445). Draft for posting to the community thread.
+> Follow-up to the original post: https://community.sigmacomputing.com/t/programmatic-data-model-management-open-source-tools/6445
 
-> 🧪 **Private beta.** Workbooks-as-code support is in **private beta** right now. The workbook spec API doesn't have full coverage yet, so expect rough edges and changes — try it on non-critical content and reach out if you'd like access or hit issues.
+> 🧪 Private beta. Workbooks as code is in private beta. The workbook spec API doesn't cover everything yet. Try it on non-critical content first. Reach out for access or to report issues.
 
-A few of you asked: *"This is great for data models — can it do workbooks too?"* Now it can (in private beta). The GitHub-integrated tool has been extended to manage **workbooks as code** alongside data models, and renamed to **Sigma GitOps** to reflect that it's no longer data-models-only.
+A few of you asked if this could do workbooks, not just data models. Now it can.
+
+The GitHub-integrated tool now manages workbooks as code next to data models. We renamed it Sigma GitOps.
 
 ## What's new
 
-- **Workbooks as code.** Pull workbook specs from Sigma into your repo, review/edit them as JSON, and let GitHub Actions sync approved changes back — the same PR-reviewed loop you already use for data models. Backed by `GET /v2/workbooks/{id}/spec`, `POST /v2/workbooks/spec`, and `PUT /v2/workbooks/{id}/spec`.
-- **Folder-scoped pull.** In the app's new **Workbooks** tab, click **⬇ Folder**, pick a Sigma folder, and it pulls every workbook spec in it into `workbooks/`. Folder selection is the trust boundary — point it at folders you know are built through the spec.
-- **A round-trip safety guard.** Workbook spec coverage isn't 100% yet, so on sync the tool fetches the live spec and **blocks any push that would drop pages, elements, or fields present in the live workbook** — an incomplete spec can't silently break a dashboard. Override intentionally with `ALLOW_WORKBOOK_REMOVALS=true`.
-- **Separate paths.** Data models commit to `data-models/`, workbooks to `workbooks/` — each configurable, and the active path follows the Data Models / Workbooks toggle.
+- **Workbooks as code.** Pull a workbook spec from Sigma into your repo. Review and edit it as JSON. GitHub Actions sync approved changes back. It's the same PR-reviewed loop you use for data models. It runs on the workbook spec API: GET, POST, and PUT on `/v2/workbooks/{id}/spec`.
+- **Folder pull.** Open the Workbooks tab, click Folder, and pick a Sigma folder. The tool pulls every workbook spec in it. Folder choice is the trust boundary. Point it at folders you built through the spec.
+- **Round-trip guard.** Spec coverage isn't complete, so the sync checks first. It blocks any push that would drop pages, elements, or fields that exist in the live workbook. An incomplete spec can't quietly break a dashboard. Override on purpose with `ALLOW_WORKBOOK_REMOVALS=true`.
+- **Separate paths.** Data models commit to `data-models/`. Workbooks commit to `workbooks/`. Each path is configurable, and the active one follows the toggle.
 
-## Why workbooks as code?
+## Why workbooks as code
 
-The same wins as data models — version control, code review, collaboration, automated deployment, and backup/restore — now for the dashboards themselves. Diff a workbook change in a PR. Roll back a bad edit. Promote a workbook across environments from git.
+You get the same wins you already get for data models, now for the dashboards themselves. Version control. Code review. Automated deploys. Backup and restore. Diff a workbook change in a PR. Roll back a bad edit. Promote a workbook across environments from git.
 
-## Getting started
+## Get started
 
-1. Open the app: **https://twells89.github.io/sigma-data-model-gh-manager/**
-2. Create a repo from the template: **https://github.com/twells89/sigma-gitops** (*Use this template*).
-3. Configure repo secrets/variables (`SIGMA_CLIENT_ID`, `SIGMA_SECRET`, `SIGMA_CLOUD`, `SIGMA_FOLDER_ID`) and enable read/write workflow permissions — same as before.
-4. Connect Sigma + GitHub, switch to the **Workbooks** tab, and hit **⬇ Folder**.
+1. Open the app: https://twells89.github.io/sigma-data-model-gh-manager/
+2. Create a repo from the template: https://github.com/twells89/sigma-gitops (Use this template).
+3. Add the repo secrets and variables (`SIGMA_CLIENT_ID`, `SIGMA_SECRET`, `SIGMA_CLOUD`, `SIGMA_FOLDER_ID`). Turn on read/write workflow permissions. Same as before.
+4. Connect Sigma and GitHub. Open the Workbooks tab. Click Folder.
 5. In `config.yml`, set `manage_workbooks: true` and list your `workbook_folders` to keep the daily pull in sync.
 
 ## A note on the spec
 
-Workbook spec coverage is still growing, which is exactly why this is a **private beta**. Folder selection + the round-trip guard are deliberate guardrails: pull the folders you trust are spec-built, and the guard prevents a partial spec from overwriting richer live content. As coverage expands, more workbooks become safe to round-trip — and we'll widen the beta.
+Spec coverage is still growing. That's why this is a private beta. Two guardrails keep it safe. Folder choice means you pull only the folders you trust. The round-trip guard stops a partial spec from overwriting live content. As coverage grows, more workbooks become safe to round-trip, and we'll widen the beta.
 
 ## Resources
 
-- **App (Sigma GitOps):** https://twells89.github.io/sigma-data-model-gh-manager/
-- **Template repo (Actions + scripts):** https://github.com/twells89/sigma-gitops
-- **Sigma API docs:** workbook + data model `/spec` endpoints
+- App (Sigma GitOps): https://twells89.github.io/sigma-data-model-gh-manager/
+- Template repo (Actions and scripts): https://github.com/twells89/sigma-gitops
+- Sigma API docs: workbook and data model `/spec` endpoints
 
-As always — fork it, extend it, and share what you build. 🚀
+Fork it, extend it, and share what you build. 🚀
