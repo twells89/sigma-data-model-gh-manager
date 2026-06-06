@@ -2,7 +2,9 @@
 
 > Follow-up to [Programmatic Data Model Management: Open-Source Tools](https://community.sigmacomputing.com/t/programmatic-data-model-management-open-source-tools/6445). Draft for posting to the community thread.
 
-A few of you asked: *"This is great for data models — can it do workbooks too?"* Now it can. The GitHub-integrated tool has been extended to manage **workbooks as code** alongside data models, and renamed to **Sigma GitOps** to reflect that it's no longer data-models-only.
+> 🧪 **Private beta.** Workbooks-as-code support is in **private beta** right now. The workbook spec API doesn't have full coverage yet, so expect rough edges and changes — try it on non-critical content and reach out if you'd like access or hit issues.
+
+A few of you asked: *"This is great for data models — can it do workbooks too?"* Now it can (in private beta). The GitHub-integrated tool has been extended to manage **workbooks as code** alongside data models, and renamed to **Sigma GitOps** to reflect that it's no longer data-models-only.
 
 ## What's new
 
@@ -25,7 +27,7 @@ The same wins as data models — version control, code review, collaboration, au
 
 ## A note on the spec
 
-Workbook spec coverage is still growing. Folder selection + the round-trip guard are deliberate guardrails: pull the folders you trust are spec-built, and the guard prevents a partial spec from overwriting richer live content. As coverage expands, more workbooks become safe to round-trip.
+Workbook spec coverage is still growing, which is exactly why this is a **private beta**. Folder selection + the round-trip guard are deliberate guardrails: pull the folders you trust are spec-built, and the guard prevents a partial spec from overwriting richer live content. As coverage expands, more workbooks become safe to round-trip — and we'll widen the beta.
 
 ## Resources
 
