@@ -1912,7 +1912,7 @@ TIPS:
             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                 <div class="setup-section">
                     <h3>Overview</h3>
-                    <p>This tool lets you manage Sigma data models as code using GitHub for version control. <strong>Sigma is always the source of truth</strong> - this tool helps you track changes, review via PRs, and maintain history.</p>
+                    <p>Sigma GitOps lets you manage Sigma <strong>data models and workbooks</strong> as code using GitHub for version control. <strong>Sigma is always the source of truth</strong> - this tool helps you track changes, review via PRs, and maintain history.</p>
                     <p>When changes are merged to your main branch, they automatically sync to Sigma via GitHub Actions.</p>
                 </div>
                 
@@ -1931,12 +1931,13 @@ TIPS:
                     <h3>Step 2: Set Up GitHub Repository</h3>
                     <ol>
                         <li>Create a new private GitHub repository</li>
-                        <li><strong><a href="https://github.com/twells89/sigma-data-model-tool/tree/main/repo-template" target="_blank">Download the repo template files</a></strong> and copy them to your repository</li>
+                        <li><strong><a href="https://github.com/twells89/sigma-gitops" target="_blank">Use the sigma-gitops repo as a template</a></strong> (Use this template → Create a new repository), or copy its files into your repo</li>
                         <li>Your repo structure should look like:
                             <ul>
-                                <li><code>.github/workflows/</code> - automation workflows</li>
+                                <li><code>.github/workflows/</code> - automation workflows (pull + sync)</li>
                                 <li><code>scripts/</code> - Python sync scripts</li>
-                                <li><code>data-models/</code> - your JSON files</li>
+                                <li><code>data-models/</code> - your data model JSON files</li>
+                                <li><code>workbooks/</code> - your workbook JSON specs (optional)</li>
                                 <li><code>config.yml</code> - configuration</li>
                             </ul>
                         </li>
@@ -2007,7 +2008,19 @@ TIPS:
                     </ul>
                     <p>This ensures <strong>all changes to main go through PR review</strong> before automatically syncing to Sigma! ✅</p>
                 </div>
-                
+
+                <div class="setup-section">
+                    <h3>📒 Managing Workbooks</h3>
+                    <p>Switch the sidebar to the <strong>Workbooks</strong> tab to manage workbooks as code, alongside data models. Workbook files live in the <strong>Workbooks Path</strong> (<code>workbooks/</code>) — set independently of the Data Models Path.</p>
+                    <ul>
+                        <li><strong>⬇ Folder</strong> — pick a Sigma folder and pull <em>every</em> workbook spec in it into <code>workbooks/</code>. Folder selection is the trust boundary: point it only at folders built through the spec.</li>
+                        <li><strong>+ Adopt</strong> — bring a single workbook under management by its ID.</li>
+                        <li>Edit a workbook's spec and commit it just like a data model; the sync workflow writes it back to Sigma.</li>
+                    </ul>
+                    <p class="setup-warning">⚠️ Workbook spec coverage isn't 100%. On sync, a <strong>round-trip guard</strong> blocks any push that would drop pages, elements, or fields present in the live workbook — so an incomplete spec can't silently destroy a dashboard. (Override intentionally with <code>ALLOW_WORKBOOK_REMOVALS=true</code>.)</p>
+                    <p>Enable it in <code>config.yml</code> with <code>manage_workbooks: true</code> and list your <code>workbook_folders</code>.</p>
+                </div>
+
                 <div class="setup-section">
                     <h3>🌿 Branch Management & Workflow</h3>
                     <p>Click the branch selector in the toolbar (or press <code>Ctrl/Cmd + B</code>) to:</p>
