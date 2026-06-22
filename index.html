@@ -2532,11 +2532,37 @@ data_models: {}
         
         // Get filename for a data model
         function getModelFileName(model) {
-            // Use a sanitized name, or fall back to the asset's ID
-            const name = model.name || model.workbookId || model.dataModelId;
-            return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') + '.json';
+            // If the asset is already tracked we know its exact on-disk filename —
+            // use it verbatim so reads/writes hit the same file the sync workflow
+            // created. Recomputing risks drifting from the committed name.
+            if (model && model.file) return model.file;
+            // Otherwise derive the name. This MUST stay byte-for-byte identical to
+            // scripts/pull_*_from_sigma.py `sanitize_filename` in the sigma-gitops
+            // repo, or the manager will read/write a different path than the Action
+            // and history will appear empty (esp. names with "(", "&", non-ASCII).
+            const name = (model && (model.name || model.workbookId || model.dataModelId)) || 'unnamed';
+            const slug = name.toLowerCase()
+                .replace(/ /g, '-')          // .replace(' ', '-')
+                .replace(/_/g, '-')          // .replace('_', '-')
+                .replace(/[^\x00-\x7F]/g, '') // .encode('ascii', 'ignore')
+                .replace(/--/g, '-')         // .replace('--', '-')
+                .replace(/^-+|-+$/g, '')     // .strip('-')
+                .slice(0, 50)                // [:50]
+                || 'unnamed';
+            return slug + '.json';
         }
-        
+
+        // Filename to commit the current editor contents to. An already-tracked
+        // asset keeps its committed filename (so edits update the same file and
+        // history stays continuous, mirroring the sync script's rename handling);
+        // a brand-new asset derives its name from the spec being saved.
+        function currentEditorFileName(spec) {
+            if (state.selectedModelMeta && state.selectedModelMeta.file) {
+                return state.selectedModelMeta.file;
+            }
+            return getModelFileName(spec);
+        }
+
         // Load data model from GitHub
         async function loadFromGitHub(sigmaSpec) {
             const fileName = getModelFileName(sigmaSpec);
@@ -2938,10 +2964,10 @@ data_models: {}
             try {
                 const editor = document.getElementById('jsonEditor');
                 const jsonData = getEditorAsObject();
-                
-                const fileName = getModelFileName(jsonData);
+
+                const fileName = currentEditorFileName(jsonData);
                 const filePath = state.github.path + fileName;
-                
+
                 // Get latest file SHA (always fetch to avoid 409 conflicts)
                 let fileSha = null;
                 try {
@@ -3025,8 +3051,8 @@ data_models: {}
             try {
                 const editor = document.getElementById('jsonEditor');
                 const jsonData = getEditorAsObject();
-                
-                const fileName = getModelFileName(jsonData);
+
+                const fileName = currentEditorFileName(jsonData);
                 const filePath = state.github.path + fileName;
                 const branchName = `update-${fileName.replace('.json', '')}-${Date.now()}`;
                 
@@ -3721,6 +3747,9 @@ data_models: {}
             updateStatus('loading', 'Loading workbook...');
             state.isNewModel = false;
             state.assetType = 'workbooks';
+            // Pin the active path to the workbooks dir so history / diff / commit
+            // resolve against the same folder this workbook was loaded from.
+            state.github.path = state.github.workbookPath || 'workbooks/';
 
             try {
                 const filePath = (state.github.workbookPath || 'workbooks/') + wb.file;
@@ -4560,10 +4589,15 @@ data_models: {}
             
             const fileName = getModelFileName(state.selectedModelMeta);
             const filePath = state.github.path + fileName;
-            
+            // `path` and `sha` are query params, so any "&", "(", etc. in the
+            // filename or branch must be percent-encoded or they truncate the
+            // query (a "&" in the name would otherwise silently return 0 commits).
+            const pathParam = filePath.split('/').map(encodeURIComponent).join('/');
+            const shaParam = encodeURIComponent(state.github.currentBranch);
+
             try {
                 const response = await fetch(
-                    `https://api.github.com/repos/${state.github.repo}/commits?path=${filePath}&sha=${state.github.currentBranch}&per_page=20`,
+                    `https://api.github.com/repos/${state.github.repo}/commits?path=${pathParam}&sha=${shaParam}&per_page=20`,
                     {
                         headers: {
                             'Authorization': `Bearer ${state.github.token}`,
