@@ -2656,32 +2656,30 @@ data_models: {}
             btn.innerHTML = '<div class="spinner"></div>';
 
             try {
-                // Workbooks and data models use different spec endpoints.
-                let specUrl;
+                // Workbooks and data models use different endpoints.
+                let spec;
                 if (state.assetType === 'workbooks') {
                     const workbookId = state.selectedModelMeta.workbookId;
                     if (!workbookId) {
                         throw new Error('This workbook has no Sigma ID yet — commit it first to create it in Sigma');
                     }
-                    specUrl = `${state.baseUrl}/v2/workbooks/${workbookId}/spec`;
+                    spec = await fetchWorkbookSpec(workbookId);
                 } else {
                     const dataModelId = state.selectedModelMeta.dataModelId;
-                    specUrl = `${state.baseUrl}/v3alpha/datamodels/${dataModelId}/spec`;
-                }
+                    // Fetch latest spec from Sigma
+                    const response = await fetch(`${state.baseUrl}/v3alpha/datamodels/${dataModelId}/spec`, {
+                        headers: {
+                            'Authorization': `Bearer ${state.accessToken}`,
+                            'Accept': 'application/json'
+                        }
+                    });
 
-                // Fetch latest spec from Sigma
-                const response = await fetch(specUrl, {
-                    headers: {
-                        'Authorization': `Bearer ${state.accessToken}`,
-                        'Accept': 'application/json'
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch from Sigma');
                     }
-                });
 
-                if (!response.ok) {
-                    throw new Error('Failed to fetch from Sigma');
+                    spec = await response.json();
                 }
-                
-                const spec = await response.json();
                 
                 // Update editor with Sigma's version
                 state.selectedModel = spec;
@@ -3644,9 +3642,33 @@ data_models: {}
 
         // ==================== WORKBOOKS AS CODE ====================
         // The repo's workbooks/ directory IS the managed set — every file there was
-        // created through the spec (POST /v2/workbooks/spec) by the sync workflow.
+        // created through the code representation (POST /v2/workbooks) by the sync workflow.
         // We never scrape the org's full workbook list; new ones are brought in
         // explicitly via "Adopt" (by ID).
+
+        // Read a workbook for the editor / repo. GET /v2/workbooks/{id}?includeContents=true
+        // returns the document under `contents` (the /spec endpoints are deprecated); repo
+        // files keep the `document` wrapper the sync workflow reads, so re-key it here.
+        // The readback no longer carries folderId, so recover it from the file record.
+        async function fetchWorkbookSpec(workbookId) {
+            const id = encodeURIComponent(workbookId);
+            const headers = { 'Authorization': `Bearer ${state.accessToken}`, 'Accept': 'application/json' };
+            const resp = await fetch(`${state.baseUrl}/v2/workbooks/${id}?includeContents=true`, { headers });
+            if (!resp.ok) throw new Error(`workbook read failed (${resp.status})`);
+            const spec = await resp.json();
+            if (spec.contents && !spec.document) {
+                spec.document = spec.contents;
+                delete spec.contents;
+            }
+            if (!spec.folderId) {
+                try {
+                    const f = await fetch(`${state.baseUrl}/v2/files/${id}`, { headers });
+                    const parentId = f.ok ? (await f.json()).parentId : null;
+                    if (parentId) spec.folderId = parentId;
+                } catch (e) { /* folderId is only a create-time convenience */ }
+            }
+            return spec;
+        }
 
         async function loadWorkbooks() {
             if (!state.github.connected) {
@@ -3800,11 +3822,12 @@ data_models: {}
         async function adoptWorkbookById(workbookId) {
             updateStatus('loading', 'Fetching workbook spec from Sigma...');
             try {
-                const resp = await fetch(`${state.baseUrl}/v2/workbooks/${workbookId}/spec`, {
-                    headers: { 'Authorization': `Bearer ${state.accessToken}`, 'Accept': 'application/json' }
-                });
-                if (!resp.ok) throw new Error('Failed to fetch workbook spec (check the ID)');
-                const spec = await resp.json();
+                let spec;
+                try {
+                    spec = await fetchWorkbookSpec(workbookId);
+                } catch (e) {
+                    throw new Error('Failed to fetch workbook spec (check the ID)');
+                }
 
                 state.assetType = 'workbooks';
                 state.isNewModel = false;
@@ -3904,11 +3927,7 @@ data_models: {}
                 const w = matches[i];
                 status.textContent = `Pulling ${i + 1}/${matches.length}: ${w.name || w.workbookId}…`;
                 try {
-                    const r = await fetch(`${state.baseUrl}/v2/workbooks/${w.workbookId}/spec`, {
-                        headers: { 'Authorization': `Bearer ${state.accessToken}`, 'Accept': 'application/json' }
-                    });
-                    if (!r.ok) throw new Error(`spec ${r.status}`);
-                    const spec = await r.json();
+                    const spec = await fetchWorkbookSpec(w.workbookId);
 
                     // collision-safe filename
                     let fileName = getModelFileName(spec);
