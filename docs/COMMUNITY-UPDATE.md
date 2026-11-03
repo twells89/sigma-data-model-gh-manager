@@ -10,7 +10,7 @@ The GitHub-integrated tool now manages workbooks as code next to data models. We
 
 ## What's new
 
-- **Workbooks as code.** Pull a workbook spec from Sigma into your repo. Review and edit it as JSON. GitHub Actions sync approved changes back. It's the same PR-reviewed loop you use for data models. It runs on the workbook spec API: GET, POST, and PUT on `/v2/workbooks/{id}/spec`.
+- **Workbooks as code.** Pull a workbook spec from Sigma into your repo. Review and edit it as JSON. GitHub Actions sync approved changes back. It's the same PR-reviewed loop you use for data models. It runs on the workbook code representation API: GET `/v2/workbooks/{id}?includeContents=true`, POST `/v2/workbooks`, and PUT `/v2/workbooks/{id}/contents`.
 - **Folder pull.** Open the Workbooks tab, click Folder, and pick a Sigma folder. The tool pulls every workbook spec in it. Folder choice is the trust boundary. Point it at folders you built through the spec.
 - **Round-trip guard.** Spec coverage isn't complete, so the sync checks first. It blocks any push that would drop pages, elements, or fields that exist in the live workbook. An incomplete spec can't quietly break a dashboard. Override on purpose with `ALLOW_WORKBOOK_REMOVALS=true`.
 - **Separate paths.** Data models commit to `data-models/`. Workbooks commit to `workbooks/`. Each path is configurable, and the active one follows the toggle.
