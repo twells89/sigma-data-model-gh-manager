@@ -3656,6 +3656,7 @@ data_models: {}
             const resp = await fetch(`${state.baseUrl}/v2/workbooks/${id}?includeContents=true`, { headers });
             if (!resp.ok) throw new Error(`workbook read failed (${resp.status})`);
             const spec = await resp.json();
+            if (spec.latestVersion !== undefined) spec.documentVersion = spec.latestVersion;
             if (spec.contents && !spec.document) {
                 spec.document = spec.contents;
                 delete spec.contents;
